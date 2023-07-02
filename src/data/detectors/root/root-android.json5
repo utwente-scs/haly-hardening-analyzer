@@ -1,0 +1,154 @@
+{
+    "files": {
+        // Format:
+        // "*filename" - match files ending with the given string
+        // "filename*" - match files starting with the given string
+        // "*filename*" - match files containing the given string
+        // "filename" - match files where the file name without the path is exactly the given string
+        // "/dir/filename" - match files where the file name with the path is exactly the given string
+
+        // List of blacklisted files that are on rooted devices but should not be visible to the app
+        "blacklist": [
+            // SU related binaries
+            "su",
+            "sudo",
+            "ku.sud",
+            ".su",
+            "daemonsu",
+            "*supersu*",
+            "*superuser*",
+            "*Kinguser*",
+            "*Kingouser*",
+            "*root*",
+    
+            // Magisk related binaries
+            "*magisk*",
+            
+            // Busybox related binaries
+            "*busybox*",
+
+            // Debugging related binaries
+            "/sys/kernel/debug*",
+            "*usb-ffs*"
+        ],
+
+        // List of files related to checking root for which access should be logged
+        "log": [
+            // The mounts file might be used to check if certain partitions are mounted read-only
+            "/proc/mounts",
+
+            // The build.prop file might be used to check if certain properties are set
+            "getprop",
+            "/system/build.prop",
+        ],
+
+        // List of files that might be mounted as read-write on rooted devices but should be visible to the app as read-only
+        "ro": [
+            // System folders might be read-write on rooted devices
+            "/sbin*",
+            "/system/bin*",
+            "/system/xbin*",
+        ],
+
+        // Patterns to look for during static analysis. Excludes patterns like *root* because they are too generic
+        "static": [
+            // SU related binaries
+            "su",
+            "sudo",
+            "ku.sud",
+            ".su",
+            "daemonsu",
+            "*supersu*",
+            "*kinguser*",
+            "*kingouser*",
+
+            // Magisk related binaries
+            "*magisk*",
+
+            // Busybox related binaries
+            "*busybox*",
+
+            // Debugging related binaries
+            "*usb-ffs*",
+
+            // Used for permission checking
+            "/proc/mounts",
+
+            // The build.prop file might be used to check if certain properties are set
+            "getprop",
+            "/system/build.prop",
+        ]
+    },
+    "mounts": {
+        // List of strings that are blacklisted from the /proc/mounts file
+        // If an entry contains one of these strings, it will not be visible to the app
+        "blacklist": [
+            "magisk",
+            "/sys/kernel/debug",
+            "usb-ffs",
+            " /system/bin " // Normally the same partition as /system but might be mounted as a rw permission on rooted devices
+        ]
+    },
+    "apps": {
+        // List of apps that should be hidden from the app installed apps list
+        // https://gist.github.com/karandpr/2abf38642e9e4753d03eb44177727f50
+        "blacklist": [
+            "catch_.me_.if_.you_.can_",
+            "cc.madkite.freedom",
+            "com.alephzain.framaroot",
+            "com.allinone.free",
+            "com.amphoras.hidemyroot",
+            "com.amphoras.hidemyrootadfree",
+            "com.android.camera.update",
+            "com.android.vending.billing.InAppBillingService.COIN",
+            "com.android.vending.billing.InAppBillingService.LUCK",
+            "com.android.wp.net.log",
+            "com.baseappfull.fwd",
+            "com.blackmartalpha",
+            "com.charles.lpoqasert",
+            "com.chelpus.lackypatch",
+            "com.chelpus.luckypatcher",
+            "com.cih.game_cih",
+            "com.devadvance.rootcloak",
+            "com.devadvance.rootcloakplus",
+            "com.dimonvideo.luckypatcher",
+            "com.dv.marketmod.installer",
+            "com.formyhm.hideroot",
+            "com.formyhm.hiderootPremium",
+            "com.geohot.towelroot",
+            "com.joeykrim.rootcheck",
+            "com.jrummy.root.browserfree",
+            "com.keramidas.titaniumbackup",
+            "com.kingo.root",
+            "com.kingouser.com",
+            "com.kingroot.kinguser",
+            "com.koushikdutta.rommanager",
+            "com.koushikdutta.rommanager.license",
+            "com.koushikdutta.superuser",
+            "com.noshufou.android.su",
+            "com.noshufou.android.su.elite",
+            "com.ramdroid.appquarantine",
+            "com.ramdroid.appquarantinepro",
+            "com.repodroid.app",
+            "com.smedialink.oneclickroot",
+            "com.thirdparty.superuser",
+            "com.topjohnwu.magisk",
+            "com.xmodgame",
+            "com.yellowes.su",
+            "com.zachspong.temprootremovejb",
+            "com.zhiqupk.root.global",
+            "com.zmapp",
+            "eu.chainfire.suhide",
+            "eu.chainfire.supersu",
+            "eu.chainfire.supersu.pro",
+            "kingoroot.supersu",
+            "me.phh.superuser",
+            "org.blackmart.market",
+            "org.creeplays.hack",
+            "org.mobilism.android"
+        ]
+    },
+    "syscalls": [
+        // We do not test for blacklisted syscalls on Android since rooting does not change the seccomp filter
+    ]
+}

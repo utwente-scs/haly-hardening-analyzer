@@ -1,0 +1,24 @@
+{
+    "files": [
+        "*xposed*",
+        "*saurik.substrate*",
+        "*cydiasubstrate*",
+        "*libsubstrate*",
+        "*lib/substrate*",
+        "*mobilesubstrate*",
+        "*cydia*",
+        "*frida*",
+        "*gum-js-loop*",
+        '*libriru*',
+        "*zygisk*"
+    ],
+    "apps": [
+        // https://gist.github.com/karandpr/2abf38642e9e4753d03eb44177727f50
+        "com.saurik.substrate",
+        "com.solohsu.android.edxp.manager",
+        "de.robv.android.xposed",
+        "de.robv.android.xposed.installer",
+        "org.lsposed.manager",
+        "org.meowcat.edxposed.manager"
+    ]
+}

@@ -1,0 +1,39 @@
+# VSCode
+.vscode
+*.code-workspace
+.history
+
+# IntelliJ
+.idea
+
+# Python
+**/__pycache__/
+
+# Virtualenv
+# https://github.com/github/gitignore/blob/main/Global/VirtualEnv.gitignore
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+[Ss]hare
+pyvenv.cfg
+.venv
+pip-selfcheck.json
+
+# NPM
+node_modules
+
+# Temporary files
+tmp
+workdir
+
+# Config file
+config*.yaml
+!config.example.yaml
+src/data/apps/scrapingant-key.txt
+
+# Mac
+.DS_Store

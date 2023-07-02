@@ -1,0 +1,95 @@
+// https://ray-chong.medium.com/android-emulator-detection-4d0f994aab5e
+// https://stackoverflow.com/questions/2799097/how-can-i-detect-when-an-android-application-is-running-in-the-emulator
+{
+    "build": {
+        // Build variable values that are used by emulators
+        "BOARD": [
+            "qc_reference_phone",
+            "nox"
+        ],
+        "BRAND": [
+            "generic"
+        ],
+        "DEVICE": [
+            "generic"
+        ],
+        "FINGERPRINT": [
+            "google/sdk_gphone_",
+            "google/sdk_gphone64_",
+            ":userdebug/dev-keys",
+            "generic",
+            "unknown",
+            "robolectric"
+        ],
+        "HARDWARE": [
+            "goldfish",
+            "ranchu",
+            "nox"
+        ],
+        "HOST": [
+            "build"
+        ],
+        "MANUFACTURER": [
+            "genymotion"
+        ],
+        "MODEL": [
+            "sdk",
+            "emulator",
+            "droid4x"
+        ],
+        "PRODUCT": [
+            "sdk",
+            "vbox86p",
+            "emulator",
+            "simulator",
+            "nox"
+        ],
+        "TYPE": [
+            "userdebug",
+            "eng"
+        ],
+        "TAGS": [
+            "dev-keys",
+            "test-keys"
+        ]
+    },
+    "static": [
+        "qc_reference_phone",
+        "google/sdk_gphone_",
+        "google/sdk_gphone64_",
+        "genymotion",
+        "droid4x",
+        "vbox86p"
+    ],
+    "files": [
+        // Genymotion
+        "/dev/socket/genyd",
+        "/dev/socket/baseband_genyd",
+
+        // QEMU pipe
+        "/dev/socket/qemud",
+        "/dev/qemu_pipe",
+        "/system/lib/libc_malloc_debug_qemu.so",
+        "/sys/qemu_trace",
+        "/system/bin/qemu-props",
+
+        // x86
+        "ueventd.android_x86.rc",
+        "x86.prop",
+        "ueventd.ttVM_x86.rc",
+        "init.ttVM_x86.rc",
+        "fstab.ttVM_x86",
+        "fstab.vbox86",
+        "init.vbox86.rc",
+        "ueventd.vbox86.rc",
+
+        // Andy
+        "fstab.andy",
+        "ueventd.andy.rc",
+
+        // Nox
+        "fstab.nox",
+        "init.nox.rc",
+        "ueventd.nox.rc"
+    ]
+}

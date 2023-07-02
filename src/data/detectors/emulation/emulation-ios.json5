@@ -1,0 +1,39 @@
+{
+    "environment": [
+        // Environment variable keys (NSProcessInfo.processInfo.environment) only present in the simulator
+        "SIMULATOR_MAINSCREEN_WIDTH",
+        "IPHONE SIMULATOR_ROOT SIMULATOR_MAINSCREEN_SCALE",
+        "SIMULATOR_RUNTIME_BUILD_VERSION SIMULATOR FRAMEBUFFER FRAMEWORK",
+        "SIMULATOR_ARCHS",
+        "SIMULATOR_RUNTIME_VERSION",
+        "SIMULATOR_MEMORY_WARNINGS SIMULATOR_MAINSCREEN_PITCH",
+        "SIMULATOR_AUDIO_DEVICES_PLIST_PATH",
+        "SIMULATOR MAINSCREEN_HEIGHT",
+        "SIMULATOR_AUDIO_SETTINGS_PATH",
+        "SIMULATOR_VERSION_INFO",
+        "SIMULATOR_SHARED_RESOURCES_DIRECTORY",
+        "IOS_SIMULATOR_SYSLOG_SOCKET",
+        "SIMULATOR_EXTENDED_DISPLAY_PROPERTIES SIMULATOR_DEVICE_NAME",
+        "SIMULATOR_MODEL_IDENTIFIER SIMULATOR_CAPABILITIES",
+        "SIMULATOR_UDID SIMULATOR_HID_SYSTEM_MANAGER",
+        "SIMULATOR_BOOT_TIME SIMULATOR_HOST_HOME SIMULATOR LEGACY ASSET_SUFFIX",
+        "SIMULATOR_PRODUCT_CLASS",
+        "SIMULATOR_ROOT XPC_SIMULATOR_LAUNCHD_NAME",
+        "SIMULATOR_LOG_ROOT",
+
+        // Corellium emulator
+        "SANDBOX_TOKENS",
+        "CA_ENABLE_OGL",
+        "CI_ENABLE_CL_CPU",
+        "CI_USE_SW",
+        "CI_NO_CM",
+        "CI_PRINT_PROGRAM"
+    ],
+    "files": [
+        // Xcode simulator
+        "/Applications/Xcode.app*",
+        
+        // Corellium emulator, can be detected by checking for /data/corellium or /usr/libexec/corelliumd
+        "*corellium*"
+    ]
+}

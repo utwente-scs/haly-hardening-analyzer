@@ -1,0 +1,229 @@
+{
+    "files": {
+        // Format:
+        // "*filename" - match files ending with the given string
+        // "filename*" - match files starting with the given string
+        // "*filename*" - match files containing the given string
+        // "filename" - match files where the file name without the path is exactly the given string
+        // "/dir/filename" - match files where the file name with the path is exactly the given string
+
+        // List of blacklisted files that are on rooted devices but should not be visible to the app
+        "blacklist": [
+            // Jailbreak related files
+            "*unc0ver*",
+            "*undecimus*",
+            "*blackra1n*",
+            "*blacksn0w*",
+            "*greenpois0n*",
+            "*limera1n*",
+            "*redsn0w*",
+            "*checkra1n*",
+            "*palera1n*",
+            "*taig*",
+            "*evasi0n*",
+            "*com.ikey.bbot*",
+            "*pangu*",
+            "*fugu14*",
+            "*fugu15*",
+            "*xina15*",
+            "*taurine*",
+            "*chimera*",
+            "*odyssey*",
+            "*liberios*",
+            "pguntether",
+            "electra",
+            "jb",
+            "/jb*",
+            "/var/jb*",
+            "jail",
+            "*jailbreak*",
+            "PPTDevice",
+            "/cores*",
+            "*procursus*",
+            "*palecursus*",
+            "*cheyote*",
+
+            // Binaries not normally available
+            "apt",
+            "bash",
+            "codesign_allocate",
+            "cp",
+            "dropbear",
+            "fstab",
+            "gdb",
+            "group",
+            "gunzip",
+            "gzip",
+            "killall",
+            "ldid",
+            "lldb",
+            "mv",
+            "plutil",
+            "rel",
+            "sftp-server",
+            "sh",
+            "ssh*",
+            "su",
+            "syslog",
+            "tar",
+
+            // Package managers / app stores
+            "Icy.app",
+            "*cydia*",
+            "RockApp.app",
+            "cdia",
+            "stash",
+            "*zebra*",
+            "*sileo*",
+            "*saily*",
+            "*trollstore*",
+            "*sources.list.d*",
+
+            // Apps on rooted devices
+            "IntelliScreen.app",
+            "*SBSettings*",
+            "WinterBoard.app",
+            "FakeCarrier.app",
+            "MxTube.app"
+        ],
+
+        // List of files related to checking root for which access should be logged
+        "log": [],
+
+        // List of files that might be mounted as read-write on rooted devices but should be visible to the app as read-only
+        "ro": [
+            "/Applications",
+            "/Library/Ringtones",
+            "/Library/Wallpaper",
+            "/usr/arm-apple-darwin9",
+            "/usr/include",
+            "/usr/libexec",
+            "/usr/share",
+            "/ect/groups",
+		    "/etc/passwd",
+            "/private",
+            "/private/var/mobile/Applications",
+            "/private/var/mobile/Containers",
+        ],
+
+        // Patterns to look for during static analysis
+        "static": [
+            // Jailbreak related files
+            "*unc0ver*",
+            "*undecimus*",
+            "*blackra1n*",
+            "*blacksn0w*",
+            "*greenpois0n*",
+            "*limera1n*",
+            "*redsn0w*",
+            "*checkra1n*",
+            "*palera1n*",
+            "/taig*",
+            "*evasi0n*",
+            "*com.ikey.bbot*",
+            "io.pangu*",
+            "panguaxe*",
+            "pangu_xpcd*",
+            "*fugu14*",
+            "*fugu15*",
+            "*xina15*",
+            "taurine*",
+            "/chimera",
+            ".installed_odyssey",
+            "*liberios*",
+            "pguntether",
+            "/electra",
+            "*jailbreak*",
+            "PPTDevice",
+            "*procursus*",
+            "*palecursus*",
+            "*cheyote*",
+
+            // Binaries not normally available
+            "*/apt",
+            "bin/bash",
+            "codesign_allocate",
+            "dropbear",
+            "fstab",
+            "gdb",
+            "killall",
+            "ldid",
+            "lldb",
+            "plutil",
+            "sftp-server",
+            "syslog",
+
+            // Package managers / app stores
+            "Icy.app",
+            "*cydia*",
+            "RockApp.app",
+            "cdia",
+            "/private/var/stash",
+            "Sileo*",
+            "Saily*",
+            "TrolLStore*",
+
+            // Read-only paths
+            "/ect/groups",
+		    "/etc/passwd"
+        ]
+    },
+    "mounts": {
+        // List of strings that are blacklisted from the /proc/mounts file
+        // If an entry contains one of these strings,
+        "blacklist": []
+    },
+    "apps": {
+        // List of apps that should be hidden from the app installed apps list
+        "blacklist": [
+            // Jailbreaks
+            "*unc0ver*",
+            "*undecimus*",
+            "*blackra1n*",
+            "*blacksn0w*",
+            "*greenpois0n*",
+            "*limera1n*",
+            "*redsn0w*",
+            "*checkra1n*",
+            "*palera1n*",
+            "*taig",
+            "*evasi0n*",
+            "*com.ikey.bbot*",
+            "*pangu*",
+            "*fugu14*",
+            "*fugu15*",
+            "*xina15*",
+            "*taurine*",
+            "*chimera*",
+            "*odyssey*",
+            "*electra*",
+            "*liberios*",
+            "*cheyote*",
+
+            // Package managers
+            "*icy",
+            "*cydia*",
+            "*zebra*",
+            "*rockapp*",
+            "*sileo*",
+            "*saily*",
+            "*trollstore*"
+        ]
+    },
+    "syscalls": [
+        // Blacklisted syscalls on non-jailbroken iOS
+        // Marked as __IOS_PROHIBITED in header file
+        "clock_settime",
+        "system",
+
+        // Marked as @available(*, unavailable) in Swift source
+        "fork",
+        "vfork",
+
+        // Marked as __swift_unavailable_on in header file
+        "popen",
+        "pclose"
+
+        // TODO: Check posix_spawn
+    ]
+}

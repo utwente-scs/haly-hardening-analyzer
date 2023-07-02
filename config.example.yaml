@@ -1,0 +1,63 @@
+# Logging level (debug, info, warning, error)
+logging: info
+
+# Working directory
+work_dir: /path/to/workdir
+
+# Timeout for the dumping of decrypted libraries on iOS
+dump_timeout: 30
+
+# Timeout of dynamic analysis per app
+dynamic_analysis_timeout: 30
+
+# Timeout between installing an iOS app and starting dynamic analysis
+# We wait some time after installing the app so background network traffic can finish
+dynamic_analysis_ios_start_timeout: 120
+
+# Timeout and memory limit for radare2 analysis of individual binary files
+radare_timeout: 30
+radare_memory_limit: 8 # GB
+
+# Radare2 hosts to use for static analysis
+# 'local' / 'localhost' will run on the local machine
+# Other hosts will use ssh to log into the machine and run radare2 there
+# The number after the host indicates the maximum number of radare2 instances to run on that machine at once
+radare_servers: 
+  local: 2
+  user@example.com: 4
+
+# Will uninstall the app after downloading the app to the device or performing dynamic analysis
+# The analyzer re-install the app via the binaries stored in the working directory or from the app store when needed
+# Setting this to false may cause errors when installing many apps at the same time because of full device storage
+uninstall_apps: True
+
+# Network adapter used for network traffic tracking and ip addresses of devices running through the adapter
+# Make sure that the adapter is either a hotspot to which the devices are connected or a proxy that is used by the devices
+network_adapter: wlan0
+ips:
+  android: 192.168.0.2
+  ios: 192.168.0.3
+
+# Login information for the Google Play Store to automatically download apk files
+# Can be obtained by e.g. using this app: https://github.com/whyorean/Authenticator/releases/
+# It is important to run the app on the same device as the dynamic test, since it determines the binaries that are downloaded of split apks
+# Also, keep in mind that this token is region specific, so if you are using a proxy, make sure it is in the same country as the device
+play_store_email: mail@example.com
+play_store_aastoken: aas_et/AKppIN...
+
+# Login information for the Apple App Store to automatically download ipa files
+app_store_email: mail@example.com
+app_store_password: password
+
+# ABI / architecture of the device used for dynamic analysis
+# The framework will only run static analysis on binaries for this ABI to save time
+android_abi: arm64-v8a
+
+# Apps to download / analyze
+apps:
+  android:
+    - com.whatsapp
+    - com.instagram.android
+    - com.facebook.katana
+  ios: []
+  

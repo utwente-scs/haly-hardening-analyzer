@@ -1,0 +1,13 @@
+{
+    "files": [
+        "*frida*",
+        "*cydiasubstrate*",
+        "*libsubstrate*",
+        "*lib/substrate*",
+        "*mobilesubstrate*",
+        "*tweakinject*"
+    ],
+    "apps": [
+        
+    ]
+}
