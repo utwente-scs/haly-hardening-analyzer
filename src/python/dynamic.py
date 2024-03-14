@@ -13,7 +13,8 @@ import frida.core
 from models.message import DynamicMessage
 import logging
 
-logger = logging.getLogger('hardeninganalyzer')
+logger = logging.getLogger("hardeninganalyzer")
+
 
 def analyze(app: App) -> None:
     """
@@ -26,23 +27,25 @@ def analyze(app: App) -> None:
     Detectors.cache_clear()
 
     Context().app = app
-    Context().stage = 'dynamic'
+    Context().stage = "dynamic"
 
     if app.get_stage() < 6:
         logger.error(f"App must be statically analyzed before running dynamic analysis")
         return
 
     if app.get_stage() >= 7 and not Config().force:
-        logger.info(f"Skipping dynamic analysis of {app.package_id}, results already exist in the working directory")
+        logger.info(
+            f"Skipping dynamic analysis of {app.package_id}, results already exist in the working directory"
+        )
         return
 
     # Install app if not installed
     install_app(app)
 
     if Context().is_android():
-        info = Detectors().get_static_results()['info']
-        if 'permissions' in info:
-            grant_permissions(app, info['permissions'])
+        info = Detectors().get_static_results()["info"]
+        if "permissions" in info:
+            grant_permissions(app, info["permissions"])
 
     # Perform analysis
     def on_message(message, data):
@@ -50,23 +53,25 @@ def analyze(app: App) -> None:
         Handle a Frida message
         Print errors and send messages to the detectors
         """
-        if message['type'] == 'send':
-            message = message['payload']
+        if message["type"] == "send":
+            message = message["payload"]
 
-            if message['type'] == 'modules':
-                Context().modules = message['modules']
+            if message["type"] == "modules":
+                Context().modules = message["modules"]
                 return
-            if message['type'] == 'log':
-                logger.log(logging.getLevelName(message['level'].upper()), message['message'])
+            if message["type"] == "log":
+                logger.log(
+                    logging.getLevelName(message["level"].upper()), message["message"]
+                )
                 return
 
             Detectors().dynamic_handle_message(DynamicMessage.from_dict(message))
-        elif message['type'] == 'error':
-            if 'stack' in message:
-                error = message['stack']
+        elif message["type"] == "error":
+            if "stack" in message:
+                error = message["stack"]
             else:
                 error = json.dumps(message)
-            if 'unable to intercept function' in error:
+            if "unable to intercept function" in error:
                 # We ignore svc instructions that we are unable to hook since they may not be actual instructions
                 return
             logger.error(f"Error from frida: {error}")
@@ -87,17 +92,27 @@ def analyze(app: App) -> None:
     while attempt < 3:
         if attempt == 2:
             # On the last attempt, try without hooking some functions that might crash the app
-            logger.warning("Trying to run app without hooking some function that might crash it...")
+            logger.warning(
+                "Trying to run app without hooking some function that might crash it..."
+            )
             safe_mode = True
-        else: 
+        else:
             safe_mode = False
 
         start = time.time()
-        FridaApplication(app, {'context': context, 'safeMode': 'yes' if safe_mode else 'no'}, on_message, on_instrument, Config().dynamic_analysis_timeout).run()
+        FridaApplication(
+            app,
+            {"context": context, "safeMode": "yes" if safe_mode else "no"},
+            on_message,
+            on_instrument,
+            Config().dynamic_analysis_timeout,
+        ).run()
         if time.time() - start > Config().dynamic_analysis_timeout - 1:
             break
 
-        logger.warning("App finished before timeout and has probably crashed, retrying...")
+        logger.warning(
+            "App finished before timeout and has probably crashed, retrying..."
+        )
         attempt += 1
 
     Detectors().dynamic_after_analysis()
@@ -113,7 +128,7 @@ def analyze(app: App) -> None:
     # Save results
     path = app.get_dynamic_result_path()
     os.makedirs(dirname(path), exist_ok=True)
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         json.dump(Detectors().get_dynamic_results(), f, indent=4, default=serializer)
 
     app.set_stage(7)

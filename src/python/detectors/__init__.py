@@ -11,10 +11,11 @@ import json
 import logging
 from intervaltree import IntervalTree
 
-logger = logging.getLogger('hardeninganalyzer')
+logger = logging.getLogger("hardeninganalyzer")
 
-@cache # Singleton
-class Detectors():
+
+@cache  # Singleton
+class Detectors:
     def __init__(self):
         self._detectors = {}
         self._import()
@@ -23,8 +24,8 @@ class Detectors():
         """
         Import all detectors from the detectors folder.
         """
-        for file in glob.glob(join(dirname(__file__), '../detectors/*.py')):
-            if file.endswith(('__init__.py', 'detector.py')):
+        for file in glob.glob(join(dirname(__file__), "../detectors/*.py")):
+            if file.endswith(("__init__.py", "detector.py")):
                 # Skip detector base class and this file
                 continue
 
@@ -34,20 +35,27 @@ class Detectors():
             spec.loader.exec_module(module)
 
             static_results = None
-            if Context().stage == 'dynamic':
+            if Context().stage == "dynamic":
                 static_results_path = Context().app.get_static_result_path()
                 if not exists(static_results_path):
-                    raise FileNotFoundError(f'Static results not found at {static_results_path}. Static results are required for dynamic analysis.')
+                    raise FileNotFoundError(
+                        f"Static results not found at {static_results_path}. Static results are required for dynamic analysis."
+                    )
 
-                with open(static_results_path, 'r') as f:
+                with open(static_results_path, "r") as f:
                     static_results = json.load(f)
 
             for member in inspect.getmembers(module, inspect.isclass):
-                if member[1].__module__ == module_name and issubclass(member[1], Detector):
+                if member[1].__module__ == module_name and issubclass(
+                    member[1], Detector
+                ):
                     # Found a detector, construct it
                     detector = member[1]()
 
-                    if static_results is not None and detector.get_id() in static_results:
+                    if (
+                        static_results is not None
+                        and detector.get_id() in static_results
+                    ):
                         # Import static results
                         detector.static_results = static_results[detector.get_id()]
 
@@ -91,14 +99,18 @@ class Detectors():
         for detector in self:
             if message.detector is None or message.detector == detector.get_id():
                 # Only send message to relevant detectors, or to all if no detector is specified
-                message_handled = message_handled or detector.dynamic_handle_message(message)
+                message_handled = message_handled or detector.dynamic_handle_message(
+                    message
+                )
 
         if not message_handled:
             message_data = message.to_dict()
-            message_data['detector'] = message.detector
+            message_data["detector"] = message.detector
             logger.debug(f"Unhandled frida message: {message_data}")
 
-    def dynamic_instrument(self, script: frida.core.Script, is_main_process: bool) -> None:
+    def dynamic_instrument(
+        self, script: frida.core.Script, is_main_process: bool
+    ) -> None:
         """
         Instrument the Frida script
         """
@@ -125,7 +137,7 @@ class Detectors():
         """
         results = {}
         for detector in self:
-            if Context().stage == 'static':
+            if Context().stage == "static":
                 i_results = detector.static_results
                 results[detector.get_id()] = self._static_filter_libraries(i_results)
             else:
@@ -138,12 +150,14 @@ class Detectors():
         """
         modules = IntervalTree()
         for module in Context().modules:
-            base = int(module['base'], 16)
-            modules[base:base+module['size']] = module
+            base = int(module["base"], 16)
+            modules[base : base + module["size"]] = module
 
         results = {}
         for detector in self:
-            results[detector.get_id()] = self._dynamic_filter_libraries(self._enhance_backtrace(detector.dynamic_results, modules))
+            results[detector.get_id()] = self._dynamic_filter_libraries(
+                self._enhance_backtrace(detector.dynamic_results, modules)
+            )
         return results
 
     def _enhance_backtrace(self, results: any, modules: IntervalTree) -> any:
@@ -156,27 +170,28 @@ class Detectors():
             return results
 
         for item in results:
-            if not isinstance(item, DynamicMessage) or item.context not in ['native', 'objc']:
+            if not isinstance(item, DynamicMessage) or item.context not in [
+                "native",
+                "objc",
+            ]:
                 continue
 
             new_backtrace = []
             for addr in item.backtrace:
                 module = list(modules[int(addr, 16)])
                 if len(module) > 0:
-                    new_backtrace.append({
-                        'address': addr,
-                        'module': module[0].data['name']
-                    })
+                    new_backtrace.append(
+                        {"address": addr, "module": module[0].data["name"]}
+                    )
                 else:
-                    new_backtrace.append({
-                        'address': addr,
-                        'module': None
-                    })
+                    new_backtrace.append({"address": addr, "module": None})
             item.backtrace = new_backtrace
 
         return results
-    
-    def _static_filter_libraries(self, messages: list[StaticMessage]) -> list[StaticMessage]:
+
+    def _static_filter_libraries(
+        self, messages: list[StaticMessage]
+    ) -> list[StaticMessage]:
         """
         Filter out static results of internal libraries
         :param messages: The messages to filter
@@ -184,21 +199,25 @@ class Detectors():
         """
         if not isinstance(messages, list):
             return messages
-        
+
         filtered_messages = []
 
         for message in messages:
-            if '/smali' in message.source:
-                source = message.source.split('/smali')[1].split('/', 1)[1]
+            if "/smali" in message.source:
+                source = message.source.split("/smali")[1].split("/", 1)[1]
 
-                if not any(source.startswith(library) for library in ['android/', 'androidx/']):
+                if not any(
+                    source.startswith(library) for library in ["android/", "androidx/"]
+                ):
                     filtered_messages.append(message)
             else:
                 filtered_messages.append(message)
 
         return filtered_messages
-    
-    def _dynamic_filter_libraries(self, messages: list[DynamicMessage]) -> list[DynamicMessage]:
+
+    def _dynamic_filter_libraries(
+        self, messages: list[DynamicMessage]
+    ) -> list[DynamicMessage]:
         """
         Filter out dynamic results of internal libraries
         :param messages: The messages to filter
@@ -206,7 +225,7 @@ class Detectors():
         """
         if not isinstance(messages, list):
             return messages
-        
+
         filtered_messages = []
 
         for message in messages:
@@ -216,7 +235,7 @@ class Detectors():
             filtered_messages.append(message)
 
         return filtered_messages
-    
+
     def _backtrace_okay(self, message: DynamicMessage) -> bool:
         """
         Check if the backtrace of a message indicates an internal call
@@ -225,32 +244,53 @@ class Detectors():
         """
         try:
 
-            if message.context == 'java':
+            if message.context == "java":
                 # Java backtrace
-                if message.backtrace[1] == 'android.app.Activity.onCreate(Native Method)':
+                if (
+                    message.backtrace[1]
+                    == "android.app.Activity.onCreate(Native Method)"
+                ):
                     # Call from Frida (frida/detectors/info.ts)
                     return False
             else:
                 # Native backtrace
-                if message.backtrace[0]['module'] == 'frida-agent-64.so':
+                if message.backtrace[0]["module"] == "frida-agent-64.so":
                     # Call from Frida
                     return False
-                
-                if message.backtrace[0]['module'] == 'libxpc.dylib' and message.type == 'file' and message.file == '/private':
+
+                if (
+                    message.backtrace[0]["module"] == "libxpc.dylib"
+                    and message.type == "file"
+                    and message.file == "/private"
+                ):
                     return False
-                
-                if message.backtrace[0]['module'] == 'libsystem_trace.dylib' and message.type == 'function' and message.function == 'sysctl':
+
+                if (
+                    message.backtrace[0]["module"] == "libsystem_trace.dylib"
+                    and message.type == "function"
+                    and message.function == "sysctl"
+                ):
                     return False
-                
-                if message.backtrace[0]['module'] == 'BaseBoard' and message.type == 'function' and message.function == '-[NSProcessInfo environment]':
+
+                if (
+                    message.backtrace[0]["module"] == "BaseBoard"
+                    and message.type == "function"
+                    and message.function == "-[NSProcessInfo environment]"
+                ):
                     return False
-                
-                if message.type == 'file' and message.file.startswith('/proc/') and all(trace['module'] in ['libc.so', 'libart.so', 'boot.oat', 'frida-agent-64.so'] for trace in message.backtrace):
+
+                if (
+                    message.type == "file"
+                    and message.file.startswith("/proc/")
+                    and all(
+                        trace["module"]
+                        in ["libc.so", "libart.so", "boot.oat", "frida-agent-64.so"]
+                        for trace in message.backtrace
+                    )
+                ):
                     # Probably an internal call from Android
                     message.confident = False
-                
+
             return True
         except IndexError:
             return True
-
-                 

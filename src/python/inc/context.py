@@ -4,11 +4,12 @@ import json
 from functools import cache
 from inc.config import Config
 
-@cache # Singleton
+
+@cache  # Singleton
 class Context:
     stage: str = None
     """Stage of the analysis (e.g. 'static', 'dynamic')"""
-    
+
     app: App | None = None
     """App being analyzed"""
 
@@ -29,7 +30,7 @@ class Context:
         Get the device info of the connected device returned by the frida query_system_parameters() function
         """
         return self._device_info
-    
+
     def get_device_ip(self) -> str | None:
         """
         Get the IP address of the connected device
@@ -44,32 +45,36 @@ class Context:
         """
         Get the CPU architecture of the connected device
         """
-        return self._device_info['arch'] if self._device_info is not None else None
+        return self._device_info["arch"] if self._device_info is not None else None
 
     def get_os(self) -> str:
         """
         Get the OS of the app being analyzed
         """
         return self.app.os
-    
+
     def is_ios(self) -> bool:
         """
         Check if the app being analyzed is an iOS app
         """
-        return self.get_os() == 'ios'
-    
+        return self.get_os() == "ios"
+
     def is_android(self) -> bool:
         """
         Check if the app being analyzed is an Android app
         """
-        return self.get_os() == 'android'
+        return self.get_os() == "android"
 
     def get_os_version(self):
         """
         Get the OS version of the connected device (e.g. 12)
         """
-        return self._device_info['os']['version'] if self._device_info is not None else None
-    
+        return (
+            self._device_info["os"]["version"]
+            if self._device_info is not None
+            else None
+        )
+
     def get_package_id(self) -> str:
         """
         Get the package id of the app to be analyzed
@@ -82,23 +87,23 @@ class Context:
         Get platform specific id used for syscalls using the svc asm instruction
         """
         if self.is_ios():
-            return '0x80'
+            return "0x80"
         elif self.is_android():
-            return '0'
+            return "0"
         else:
-            raise Exception('Unsupported OS')
+            raise Exception("Unsupported OS")
 
     def get_svc_instruction_registry(self) -> str:
         """
         Get the address where the id of the syscall to be executed is stored
         """
         if self.is_ios():
-            return 'x16'
+            return "x16"
         elif self.is_android():
             # Android
-            return 'x8'
+            return "x8"
         else:
-            raise Exception('Unsupported OS')
+            raise Exception("Unsupported OS")
 
     def get_syscall_name(self, id: int) -> str:
         """
@@ -112,7 +117,7 @@ class Context:
         """
         Get the names of all syscalls
         """
-        with open(data_path(f'syscalls/syscalls-{self.get_os()}.json')) as f:
+        with open(data_path(f"syscalls/syscalls-{self.get_os()}.json")) as f:
             return {int(id): name for id, name in json.load(f).items()}
 
     def to_dict(self) -> dict:
@@ -120,10 +125,7 @@ class Context:
         Get the context as a dict to be sent to the frida script
         """
         return {
-            'device_info': self._device_info,
-            'package_id': self.get_package_id(),
-            'os': self.get_os(),
+            "device_info": self._device_info,
+            "package_id": self.get_package_id(),
+            "os": self.get_os(),
         }
-
-    
-

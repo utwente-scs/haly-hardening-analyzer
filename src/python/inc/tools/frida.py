@@ -10,10 +10,19 @@ import logging
 from time import sleep
 import json
 
-logger = logging.getLogger('hardeninganalyzer')
+logger = logging.getLogger("hardeninganalyzer")
+
 
 class FridaApplication:
-    def __init__(self, app: App, data: dict = None, onmessage: Callable[[Mapping[Any, Any], Any], Any] = None, oninstrument: Callable[[frida.core.Script, bool], None] = None, timeout: int = 60, resume: bool = True):
+    def __init__(
+        self,
+        app: App,
+        data: dict = None,
+        onmessage: Callable[[Mapping[Any, Any], Any], Any] = None,
+        oninstrument: Callable[[frida.core.Script, bool], None] = None,
+        timeout: int = 60,
+        resume: bool = True,
+    ):
         """
         Initialize a new Frida application
         :param app: application to run
@@ -23,24 +32,32 @@ class FridaApplication:
         :param resume: whether the app should be resumed after spawning
         """
         self._stop_requested = threading.Event()
-        self._reactor = Reactor(run_until_return=lambda reactor: self._stop_requested.wait(timeout))
+        self._reactor = Reactor(
+            run_until_return=lambda reactor: self._stop_requested.wait(timeout)
+        )
 
         self._sessions = set()
 
         self._device = None
         while self._device is None:
             for device in frida.enumerate_devices():
-                if device.type != 'usb':
+                if device.type != "usb":
                     continue
-                if device.query_system_parameters()['os']['id'] == Context().get_os():
+                if device.query_system_parameters()["os"]["id"] == Context().get_os():
                     self._device = device
                     break
 
             if self._device is None:
-                os_name = 'iOS' if Context().get_os() == 'ios' else Context().get_os().capitalize()
-                logger.error(f'Could not find a connected {os_name} device. Is it connected?')
+                os_name = (
+                    "iOS"
+                    if Context().get_os() == "ios"
+                    else Context().get_os().capitalize()
+                )
+                logger.error(
+                    f"Could not find a connected {os_name} device. Is it connected?"
+                )
                 sleep(1)
-            
+
         Context().set_device_info(self._device.query_system_parameters())
 
         self._appid = app.package_id
@@ -49,7 +66,10 @@ class FridaApplication:
         self._oninstrument = oninstrument
         self._resume = resume
 
-        self._device.on("child-added", lambda child: self._reactor.schedule(lambda: self._on_child_added(child)))
+        self._device.on(
+            "child-added",
+            lambda child: self._reactor.schedule(lambda: self._on_child_added(child)),
+        )
 
     def run(self) -> None:
         """
@@ -73,8 +93,13 @@ class FridaApplication:
                 pid = self._device.spawn([self._appid])
                 break
             except frida.NotSupportedError as e:
-                if 'this feature requires an iOS Developer Disk Image to be mounted' in str(e):
-                    logger.error('Could not connect to iPhone. Is it connected and is Frida running?')
+                if (
+                    "this feature requires an iOS Developer Disk Image to be mounted"
+                    in str(e)
+                ):
+                    logger.error(
+                        "Could not connect to iPhone. Is it connected and is Frida running?"
+                    )
                     sleep(1)
                 else:
                     raise e
@@ -93,15 +118,20 @@ class FridaApplication:
         Instrument the given process id with our detectors
         """
         session = self._device.attach(pid)
-        session.on("detached", lambda reason: self._reactor.schedule(lambda: self._on_detached(pid, session, reason)))
+        session.on(
+            "detached",
+            lambda reason: self._reactor.schedule(
+                lambda: self._on_detached(pid, session, reason)
+            ),
+        )
         session.enable_child_gating()
-        script_path = frida_path('_main.js')
-        with open(script_path, 'r') as script_file:
+        script_path = frida_path("_main.js")
+        with open(script_path, "r") as script_file:
             script_content = script_file.read()
         for key, value in self._data.items():
             script_content = script_content.replace("'{{%s}}'" % key, json.dumps(value))
         script = session.create_script(script_content)
-        script.on('message', self._onmessage)
+        script.on("message", self._onmessage)
         script.load()
         self._sessions.add(session)
         if self._oninstrument:

@@ -7,7 +7,8 @@ import logging
 from inc.tools.gplaydownloader import download_apk
 from inc.tools.ipatool import download_ipa
 
-logger = logging.getLogger('hardeninganalyzer')
+logger = logging.getLogger("hardeninganalyzer")
+
 
 def download(app: App):
     logger.info(f"Downloading {app.package_id} ({app.os})")
@@ -16,11 +17,17 @@ def download(app: App):
     Context.cache_clear()
 
     Context().app = app
-    Context().stage = 'download'
+    Context().stage = "download"
 
     # Check if app already downloaded
-    if app.get_stage() >= 1 and exists(app.get_main_binary_path()) and not Config().force:
-        logger.info(f"Skipping download of {app.package_id}, binary already exists in the working directory")
+    if (
+        app.get_stage() >= 1
+        and exists(app.get_main_binary_path())
+        and not Config().force
+    ):
+        logger.info(
+            f"Skipping download of {app.package_id}, binary already exists in the working directory"
+        )
         return
 
     if Context().is_android():

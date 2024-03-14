@@ -8,11 +8,12 @@ from models.message import DynamicMessage
 if TYPE_CHECKING:
     from models.nativebinary import NativeBinary
 
+
 class Detector(ABC):
     def __init__(self):
         self.static_results = []
         """Static results of the detector"""
-        
+
         self.dynamic_results = []
         """Dynamic results of the detector"""
 
@@ -30,7 +31,9 @@ class Detector(ABC):
         """
         pass
 
-    def static_analyze_network_security_config(self, config_file: str, config_xml: str, config_dict: dict) -> None:
+    def static_analyze_network_security_config(
+        self, config_file: str, config_xml: str, config_dict: dict
+    ) -> None:
         """
         During static analysis, analyze the network security config of an Android app
         :param config_file: Path to the network security config file
@@ -78,7 +81,9 @@ class Detector(ABC):
         """
         return {}
 
-    def dynamic_instrument(self, script: frida.core.Script, is_main_process: bool) -> None:
+    def dynamic_instrument(
+        self, script: frida.core.Script, is_main_process: bool
+    ) -> None:
         """
         Instrument app during dynamic analysis when a process is started
         :param script: Frida script to use for RPC calls
