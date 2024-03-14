@@ -53,6 +53,7 @@ logger = logging.getLogger("hardeninganalyzer")
 )
 @click.option("--android", "-a", is_flag=True, help="Only analyze Android apps")
 @click.option("--ios", "-i", is_flag=True, help="Only analyze iOS apps")
+@click.option("--dev", "-d", type=str, help="Device serial for ADB or UDID for iOS")
 @click.pass_context
 def cli(
     ctx: click.core.Context,
@@ -63,6 +64,7 @@ def cli(
     force: bool,
     android: bool,
     ios: bool,
+    dev: str,
 ):
     # Load config file
     if not exists(config):
@@ -124,7 +126,7 @@ def cli(
     logger.addHandler(file_handler)
 
     # Configure multithreading
-    if multithread > 1:
+    if multithread > 1 or len(Config().devs) > 1:
         # Multithreading is only supported for static analysis
         # TODO: Support multiple devices
         if ctx.invoked_subcommand not in ["prepare", "static", "dynamic", "run"]:
@@ -229,7 +231,7 @@ def run_multithreaded(cmd: list[str] | str, config: str, thread_amount: int):
         radare_servers = [
             server for server, amount in radare_servers.items() for _ in range(amount)
         ]
-
+    # TODO change this comment when done testing for multi device
     # iOS prepare and iOS/Android dynamic need to be run on a single device
     if cmd[0] == "prepare" or cmd[0] == "dynamic":
         # Start process for iOS apps
@@ -242,14 +244,17 @@ def run_multithreaded(cmd: list[str] | str, config: str, thread_amount: int):
     if cmd[0] == "dynamic":
         # Start process for Android apps
         if len(android_apps) > 0:
-            logger.debug("Starting subprocess for Android apps")
-            command = [sys.executable, __file__, "--android"] + flags + cmd
-            p = subprocess.Popen(command)
-            processes.append((p, "for Android apps"))
+            for dev in Config().devs:
+                logger.debug("Starting subprocess for Android apps on dev {dev}")
+                command = (
+                    [sys.executable, __file__, "--android"] + flags + ["-d", dev] + cmd
+                )
+                print(command)
+                # p = subprocess.Popen(command)
+                # processes.append((p, "for Android apps on dev {dev}"))
     else:
         if cmd[0] == "prepare" and len(android_apps) > 0:
             flags += ["--android"]
-
         for i in range(thread_amount):
             r2_server = []
             if radare_servers is not None and (
