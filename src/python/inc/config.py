@@ -21,7 +21,7 @@ class Config(object):
     uninstall_apps = True
     force = False
 
-    devs = []
+    devices = [{"serial": None, "type": "android", "ip": None, "network_adapter": None}]
     dev = None
 
     network_adapter = None
@@ -54,7 +54,7 @@ class Config(object):
             "dynamic_analysis_timeout",
             "dynamic_analysis_ios_start_timeout",
             "uninstall_apps",
-            "devs",
+            "devices",
             "network_adapter",
             "ips",
             "play_store_email",

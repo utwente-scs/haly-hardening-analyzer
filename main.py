@@ -53,7 +53,7 @@ logger = logging.getLogger("hardeninganalyzer")
 )
 @click.option("--android", "-a", is_flag=True, help="Only analyze Android apps")
 @click.option("--ios", "-i", is_flag=True, help="Only analyze iOS apps")
-@click.option("--dev", "-d", type=str, help="Device serial for ADB or UDID for iOS")
+@click.option("--dev", "-d", default=None, type=str, help="Device serial for ADB or UDID for iOS")
 @click.pass_context
 def cli(
     ctx: click.core.Context,
@@ -100,8 +100,6 @@ def cli(
 
     Config().force = force
     
-    Config().dev = dev
-
     # Configure logging
     level = logging.getLevelName(Config().logging.upper())
 
@@ -127,14 +125,25 @@ def cli(
     logger.addHandler(stdout_handler)
     logger.addHandler(file_handler)
 
-    if len(Config().devs) > 1:
+    # Single device, set Config values
+    if dev is not None:
+        for dev_i in Config().devices:
+            if dev_i["serial"] == dev:
+                Config().dev = dev
+                Config().ips = {dev_i["type"]: dev_i["ip"]}
+                Config().network_adapter = dev_i["network_adapter"]
+                break
+        else:
+            logger.error(f"Device {dev} not found in config file")
+    # Multiple devices, split the devices into subprocesses 
+    elif len(Config().devices) > 1:
         if ctx.invoked_subcommand == "dynamic":
-            run_multidevice("dynamic", config, Config().devs)
+            run_multidevice("dynamic", config, Config().devices)
+            exit(0)
 
     # Configure multithreading
     if multithread > 1:
         # Multithreading is only supported for static analysis
-        # TODO: Support multiple devices
         if ctx.invoked_subcommand not in ["prepare", "static", "dynamic", "run"]:
             logger.error("Multithreading can only be used with static analysis")
             exit(1)
@@ -208,7 +217,7 @@ cli.add_command(prepare)
 cli.add_command(run)
 cli.add_command(report)
 
-def run_multidevice(cmd: list[str] | str, config: str, devs: list[str]):
+def run_multidevice(cmd: list[str] | str, config: str, devices: list[str]):
     if isinstance(cmd, str):
         cmd = [cmd]
 
@@ -221,9 +230,9 @@ def run_multidevice(cmd: list[str] | str, config: str, devs: list[str]):
         flags.append("-f")
     
     processes = []
-    for dev in devs:
-        # TODO change this comment when done testing for multi device
-        # iOS prepare and iOS/Android dynamic need to be run on a single device
+    for dev_i in devices:
+        dev = dev_i["serial"]
+        # iOS has not been tested with multiple devices
         if cmd[0] == "prepare" or cmd[0] == "dynamic":
             # Start process for iOS apps
             if len(ios_apps) > 0:
@@ -237,11 +246,10 @@ def run_multidevice(cmd: list[str] | str, config: str, devs: list[str]):
             if len(android_apps) > 0:
                 logger.debug(f"Starting subprocess for Android apps on device {dev}")
                 command = (
-                    [sys.executable, __file__, "--android"] + flags + ["-d", dev] + cmd
+                    [sys.executable, __file__, "--android", "-d", dev] + flags + cmd
                 )
-                print(command)
-                # p = subprocess.Popen(command)
-                # processes.append((p, f"for Android apps on device {dev}"))
+                p = subprocess.Popen(command)
+                processes.append((p, f"for Android apps on device {dev}"))
 
     # Wait for all subprocesses to finish
     for process in processes:
