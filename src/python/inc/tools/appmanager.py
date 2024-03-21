@@ -30,7 +30,7 @@ def is_app_installed(app: App) -> bool:
                 return success
 
     elif Context().is_android():
-        package_installed = adb(f"shell pm list packages {app.package_id}")
+        package_installed = adb(f"shell pm list packages {app.package_id}", Config().dev)
         if package_installed is False:
             exit(1)
         else:
@@ -77,7 +77,7 @@ def install_app(app: App, wait_to_finish: bool = True) -> bool:
         if len(apks) > 0:
             # Install app via apks
             apks = " ".join([shlex.quote(apk) for apk in apks])
-            if adb(f"install-multiple {apks}") is not False:
+            if adb(f"install-multiple {apks}", Config().dev) is not False:
                 return True
 
     return False
@@ -103,7 +103,7 @@ def uninstall_app(app: App) -> bool:
                 logger.error(f"Failed to uninstall app {app.package_id}: {result}")
                 break
     elif Context().is_android():
-        success = adb(f"uninstall {app.package_id}")
+        success = adb(f"uninstall {app.package_id}", Config().dev)
         if not success:
             logger.error(f"Failed to uninstall app {app.package_id}")
         return success
@@ -117,4 +117,4 @@ def grant_permissions(app: App, permissions: list[str]):
     :param permissions: permissions to grant
     """
     for permission in permissions:
-        adb(f"shell pm grant {app.package_id} {permission}", True)
+        adb(f"shell pm grant {app.package_id} {permission}", Config().dev, True)

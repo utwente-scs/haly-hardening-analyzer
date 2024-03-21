@@ -99,6 +99,8 @@ def cli(
     Config().radare_server = r2_server
 
     Config().force = force
+    
+    Config().dev = dev
 
     # Configure logging
     level = logging.getLevelName(Config().logging.upper())
@@ -125,8 +127,12 @@ def cli(
     logger.addHandler(stdout_handler)
     logger.addHandler(file_handler)
 
+    if len(Config().devs) > 1:
+        if ctx.invoked_subcommand == "dynamic":
+            run_multidevice("dynamic", config, Config().devs)
+
     # Configure multithreading
-    if multithread > 1 or len(Config().devs) > 1:
+    if multithread > 1:
         # Multithreading is only supported for static analysis
         # TODO: Support multiple devices
         if ctx.invoked_subcommand not in ["prepare", "static", "dynamic", "run"]:
@@ -202,6 +208,46 @@ cli.add_command(prepare)
 cli.add_command(run)
 cli.add_command(report)
 
+def run_multidevice(cmd: list[str] | str, config: str, devs: list[str]):
+    if isinstance(cmd, str):
+        cmd = [cmd]
+
+    apps = Config().apps
+    ios_apps = [app for app in apps if app.os == "ios"]
+    android_apps = [app for app in apps if app.os == "android"]
+    
+    flags = ["-c", config]
+    if Config().force:
+        flags.append("-f")
+    
+    processes = []
+    for dev in devs:
+        # TODO change this comment when done testing for multi device
+        # iOS prepare and iOS/Android dynamic need to be run on a single device
+        if cmd[0] == "prepare" or cmd[0] == "dynamic":
+            # Start process for iOS apps
+            if len(ios_apps) > 0:
+                logger.debug("Starting subprocess for iOS apps")
+                command = [sys.executable, __file__, "--ios"] + flags + cmd
+                p = subprocess.Popen(command)
+                processes.append((p, "for iOS apps"))
+                thread_amount -= 1
+        if cmd[0] == "dynamic":
+            # Start process for Android apps on device
+            if len(android_apps) > 0:
+                logger.debug(f"Starting subprocess for Android apps on device {dev}")
+                command = (
+                    [sys.executable, __file__, "--android"] + flags + ["-d", dev] + cmd
+                )
+                print(command)
+                # p = subprocess.Popen(command)
+                # processes.append((p, f"for Android apps on device {dev}"))
+
+    # Wait for all subprocesses to finish
+    for process in processes:
+        process[0].wait()
+        logger.debug("Subprocess %s has finished" % process[1])
+
 
 def run_multithreaded(cmd: list[str] | str, config: str, thread_amount: int):
     """
@@ -244,14 +290,12 @@ def run_multithreaded(cmd: list[str] | str, config: str, thread_amount: int):
     if cmd[0] == "dynamic":
         # Start process for Android apps
         if len(android_apps) > 0:
-            for dev in Config().devs:
-                logger.debug("Starting subprocess for Android apps on dev {dev}")
-                command = (
-                    [sys.executable, __file__, "--android"] + flags + ["-d", dev] + cmd
-                )
-                print(command)
-                # p = subprocess.Popen(command)
-                # processes.append((p, "for Android apps on dev {dev}"))
+            logger.debug("Starting subprocess for Android apps")
+            command = (
+                [sys.executable, __file__, "--android"] + flags + cmd
+            )
+            p = subprocess.Popen(command)
+            processes.append((p, "for Android apps"))
     else:
         if cmd[0] == "prepare" and len(android_apps) > 0:
             flags += ["--android"]

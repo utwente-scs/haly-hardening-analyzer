@@ -22,6 +22,7 @@ class Config(object):
     force = False
 
     devs = []
+    dev = None
 
     network_adapter = None
     ips = {"android": None, "ios": None}
