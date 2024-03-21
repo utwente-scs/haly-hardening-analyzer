@@ -29,6 +29,8 @@ node_modules
 # Temporary files
 tmp
 workdir
+out
+__handlers__
 
 # Config file
 config*.yaml
