@@ -5,7 +5,7 @@ import inc.config
 
 
 class App:
-    def __init__(self, package_id: str, os: str):
+    def __init__(self, package_id: str, os: str, device: str = None):
         """
         Object representing an app
         :param package_id: package id of the app
@@ -13,6 +13,7 @@ class App:
         """
         self.package_id = package_id
         self.os = os
+        self.device = device
 
     def get_binary_extension(self) -> str:
         """
@@ -95,7 +96,10 @@ class App:
         """
         Get the path to the dynamic analysis result
         """
-        return join(self.get_result_path(), "dynamic.json")
+        if self.device is None:
+            path = join(self.get_result_path(), "dynamic.json")
+        else:
+            path = join(self.get_result_path(), f"dynamic_{self.device}.json")
 
     def get_stage(self) -> int:
         """
@@ -106,7 +110,10 @@ class App:
             return 0
 
         with open(stage_file, "r") as f:
-            return int(f.read())
+            num = f.read()
+            if num == "":
+                print("Empty stage file")
+            return int(num)
 
     def set_stage(self, stage: int) -> None:
         """

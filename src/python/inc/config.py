@@ -71,3 +71,7 @@ class Config(object):
             if mobile_os not in data["apps"] or data["apps"][mobile_os] is None:
                 continue
             self.apps.extend([App(app, mobile_os) for app in data["apps"][mobile_os]])
+    def set_device(self, device):
+        self.dev = device
+        for app in self.apps:
+            app.device = device
