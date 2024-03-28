@@ -201,7 +201,7 @@ def search(
 
         if (
             "magisk" in query
-            and re.match("[/_-+](da|no|sv|nb|)[/_-.+]", source)
+            and re.match('[\/_\-+](da|no|sv|nb|)[\/_\-.+]', source)
             or source.endswith("ideas_info_config.json")
         ):
             return True
