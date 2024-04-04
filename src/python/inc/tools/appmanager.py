@@ -8,9 +8,9 @@ from inc.util import run_system_command
 from inc.context import Context
 from time import sleep
 from tidevice.exceptions import SocketError
+from inc.config import Config
 
 logger = logging.getLogger("hardeninganalyzer")
-
 
 def is_app_installed(app: App) -> bool:
     """

@@ -101,10 +101,15 @@ class ConnectionDetector(Detector):
                 "Cannot start tcpdump because IP address or network adapter is not configured"
             )
             return
-
-        pcap_file = os.path.join(Context().app.get_result_path(), "tcpdump.pcap")
+        if Config().device is not None:
+            pcap_file = os.path.join(Context().app.get_result_path(), f'tcpdump_{Config().device["name"]}.pcap')
+        else:
+            pcap_file = os.path.join(Context().app.get_result_path(), "tcpdump.pcap")
+            
+        cmd = ["sudo", "tcpdump", "-i", adapter, "-w", pcap_file, "net", ip]
+        logger.info(f"Starting tcpdump with command: {' '.join(cmd)}")
         self.tcpdump_session = subprocess.Popen(
-            ["sudo", "tcpdump", "-i", adapter, "-w", pcap_file, "net", ip],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -122,7 +127,11 @@ class ConnectionDetector(Detector):
             kill_process(self.tcpdump_session.pid, signal.SIGKILL)
             code = self.tcpdump_session.wait()
 
-        pcap_file = os.path.join(Context().app.get_result_path(), "tcpdump.pcap")
+        if Config().device is not None:
+            pcap_file = os.path.join(Context().app.get_result_path(), f'tcpdump_{Config().device["name"]}.pcap')
+        else:
+            pcap_file = os.path.join(Context().app.get_result_path(), "tcpdump.pcap")
+            
         if not os.path.exists(pcap_file):
             logger.error(f"Tcpdump exited with {code} and did not produce a pcap file")
             return
@@ -134,9 +143,14 @@ class ConnectionDetector(Detector):
         sleep(1)
 
         # Fix pcap file
-        fixed_pcap_file = os.path.join(
-            Context().app.get_result_path(), "tcpdump-fixed.pcap"
-        )
+        if Config().device is not None:
+            fixed_pcap_file = os.path.join(
+                Context().app.get_result_path(), f'tcpdump-fixed_{Config().device["name"]}.pcap'
+            )
+        else:        
+            fixed_pcap_file = os.path.join(
+                Context().app.get_result_path(), "tcpdump-fixed.pcap"
+            )
         subprocess.run(
             [
                 "pcapfix",

@@ -222,7 +222,7 @@ def run_system_command(command: str | list[str]) -> tuple[bool, str, int]:
         shell = True
 
     try:
-        output = subprocess.check_output(command, shell=shell, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(command, shell=shell, stderr=subprocess.STDOUT, timeout=60)
         return True, output.decode("utf-8", "ignore"), 0
     except subprocess.CalledProcessError as e:
         return False, e.output.decode("utf-8", "ignore"), e.returncode

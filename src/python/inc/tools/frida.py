@@ -43,6 +43,9 @@ class FridaApplication:
             for device in frida.enumerate_devices():
                 if device.type != "usb":
                     continue
+                if device.id != Config().device["serial"]:
+                    print(device.id, Config().device["serial"])
+                    continue
                 if device.query_system_parameters()["os"]["id"] == Context().get_os():
                     self._device = device
                     break
@@ -54,7 +57,7 @@ class FridaApplication:
                     else Context().get_os().capitalize()
                 )
                 logger.error(
-                    f"Could not find a connected {os_name} device. Is it connected?"
+                    f"Could not find a connected {Config().device['serial']}({os_name}) device. Is it connected?"
                 )
                 sleep(1)
 

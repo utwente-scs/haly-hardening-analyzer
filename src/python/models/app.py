@@ -96,10 +96,10 @@ class App:
         """
         Get the path to the dynamic analysis result
         """
-        if self.device is None:
-            path = join(self.get_result_path(), "dynamic.json")
+        if inc.config.Config().device is None:
+            return join(self.get_result_path(), "dynamic.json")
         else:
-            path = join(self.get_result_path(), f"dynamic_{self.device}.json")
+            return join(self.get_result_path(), f'dynamic_{inc.config.Config().device["name"]}.json')
 
     def get_stage(self) -> int:
         """

@@ -12,6 +12,8 @@ from inc.tools.appmanager import install_app, uninstall_app, grant_permissions
 import frida.core
 from models.message import DynamicMessage
 import logging
+import subprocess
+from inc.tools.adb import is_device_connected, kill_server, force_stop
 
 logger = logging.getLogger("hardeninganalyzer")
 
@@ -38,7 +40,58 @@ def analyze(app: App) -> None:
             f"Skipping dynamic analysis of {app.package_id}, results already exist in the working directory"
         )
         return
+    
+    def start_emulator(avd: str, snapshot: str = None, network_adapter: str = None)->subprocess.Popen:
+        # Start the emulator as a subprocess with the provided AVD and snapshot and use the network adapter, check if this is a tap device
+        
+        # Check if the emulator is already running
+        emulator_running = False
+        try:
+            emulator_running = (
+                subprocess.run(["adb", "devices"], capture_output=True)
+                .stdout.decode()
+                .find("emulator") != -1
+            )
+        except:
+            pass
+        
+        if emulator_running:
+            logger.info("Emulator already running")
+            return
+        
+        is_tap = False
+        if network_adapter is not None:
+            is_tap = network_adapter.startswith("tap")
+        
+        # Create commands for starting the emulator using the tap interface and if there is a snapshot or not
+        cmd = ["emulator", "-avd", avd]
+        if snapshot is not None:
+            cmd += ["-snapshot", snapshot]
+        if is_tap:
+            cmd += ["-net-tap", network_adapter]
+        if network_adapter is not None and not is_tap:
+            cmd += ["-net", network_adapter]
+        print(f"Starting emulator with command: {cmd}")
+        # Start the emulator
+        return subprocess.Popen(cmd, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,)
+    
+    emu_proc = None
 
+    if Config().device is not None and Config().device["type"] == "emulator" and Config().device["avd"] is not None:
+        print("Starting emulator")
+        #kill_server()
+	#time.sleep(2)
+        emu_proc = start_emulator(Config().device["avd"], Config().device["snapshot"], Config().device["network_adapter"])
+    time.sleep(10)
+    # Check if device is online
+    if is_device_connected(Config().device["serial"]):
+        logger.info("Device is online! Can continue...")
+    else:
+        logger.error("Device is not online! Exiting...")
+        emu_proc.terminate()
+        return
+    
     # Install app if not installed
     install_app(app)
 
@@ -109,10 +162,11 @@ def analyze(app: App) -> None:
         ).run()
         if time.time() - start > Config().dynamic_analysis_timeout - 1:
             break
-
+        time.sleep(1)
         logger.warning(
             "App finished before timeout and has probably crashed, retrying..."
         )
+        force_stop(app.package_id, Config().device["serial"])
         attempt += 1
 
     Detectors().dynamic_after_analysis()
@@ -120,6 +174,10 @@ def analyze(app: App) -> None:
     if Config().uninstall_apps:
         # Uninstall the app from the device
         uninstall_app(app)
+        
+    if emu_proc is not None:
+        emu_proc.terminate()
+    	#kill_server()
 
     if attempt == 3:
         logger.error("App crashed too many times, aborting...")

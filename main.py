@@ -70,10 +70,10 @@ def cli(
     if not exists(config):
         logging.error("Provided config file could not be found")
         exit(1)
-
+    print(f"Loading config from {config}")
     with open(config, "r") as config_file:
         c = yaml.load(config_file, Loader=yaml.Loader)
-        Config().from_dict(c)
+        Config().from_dict(c, dev)
 
     if thread is None:
         thread = "1/1"
@@ -106,7 +106,7 @@ def cli(
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setFormatter(CustomFormatter())
     stdout_handler.setLevel(level)
-
+    
     os.makedirs(join(Config().work_dir, "logs"), exist_ok=True)
     file_handler = logging.FileHandler(
         join(
@@ -125,18 +125,8 @@ def cli(
     logger.addHandler(stdout_handler)
     logger.addHandler(file_handler)
 
-    # Single device, set Config values
-    if dev is not None:
-        for dev_i in Config().devices:
-            if dev_i["serial"] == dev:
-                Config().dev = dev
-                Config().ips = {dev_i["type"]: dev_i["ip"]}
-                Config().network_adapter = dev_i["network_adapter"]
-                break
-        else:
-            logger.error(f"Device {dev} not found in config file")
     # Multiple devices, split the devices into subprocesses 
-    elif len(Config().devices) > 1:
+    if dev is None and len(Config().devices) > 1:
         if ctx.invoked_subcommand == "dynamic":
             run_multidevice("dynamic", config, Config().devices)
             exit(0)
@@ -230,8 +220,8 @@ def run_multidevice(cmd: list[str] | str, config: str, devices: list[str]):
         flags.append("-f")
     
     processes = []
-    for dev_i in devices:
-        dev = dev_i["serial"]
+    for dev in devices:
+        dev_name = dev["name"]
         # iOS has not been tested with multiple devices
         if cmd[0] == "prepare" or cmd[0] == "dynamic":
             # Start process for iOS apps
@@ -244,12 +234,12 @@ def run_multidevice(cmd: list[str] | str, config: str, devices: list[str]):
         if cmd[0] == "dynamic":
             # Start process for Android apps on device
             if len(android_apps) > 0:
-                logger.debug(f"Starting subprocess for Android apps on device {dev}")
+                logger.debug(f"Starting subprocess for Android apps on device {dev_name}")
                 command = (
-                    [sys.executable, __file__, "--android", "-d", dev] + flags + cmd
+                    [sys.executable, __file__, "--android", "-d", dev_name] + flags + cmd
                 )
                 p = subprocess.Popen(command)
-                processes.append((p, f"for Android apps on device {dev}"))
+                processes.append((p, f"for Android apps on device {dev_name}"))
 
     # Wait for all subprocesses to finish
     for process in processes:
