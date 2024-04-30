@@ -28,7 +28,7 @@ def index(directory: str, ignore_exists: bool = True) -> bool:
     logger.debug(f"Starting indexing of {directory}...")
 
     # Run cindex
-    (success, result, code) = run_system_command(f"cindex {directory}")
+    (success, result, code) = run_system_command(f"cindex {directory}", timeout=None)
     if not success:
         logger.warn(f"cindex {directory} failed with exit code {code}: {result}")
         return False
@@ -61,7 +61,7 @@ def search(
         flags += "-i "
     logger.debug(f"csearch {flags} -n {shlex.quote(query)}")
     (success, output, code) = run_system_command(
-        f"csearch {flags} -n {shlex.quote(query)}"
+        f"csearch {flags} -n {shlex.quote(query)}", timeout=None
     )
     if not success:
         if code == 1:

@@ -31,7 +31,7 @@ def download_apk(app: App) -> bool:
 
     # Download the app
     (success, result, _) = run_system_command(
-        f"java -jar {tools_path('gplay-downloader.jar')} -a {app_ids} -c {auth_config} -o {workdir_path(join('binary', app.os))}"
+        f"java -jar {tools_path('gplay-downloader.jar')} -a {app_ids} -c {auth_config} -o {workdir_path(join('binary', app.os))}", timeout=None
     )
     if success:
         if not f"Downloaded AppId {app.package_id}" in result:

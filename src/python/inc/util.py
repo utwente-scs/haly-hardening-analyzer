@@ -211,7 +211,7 @@ def glob_by_magic(path: str, magic_signature: bytes | list[bytes]):
                     yield file_path
 
 
-def run_system_command(command: str | list[str]) -> tuple[bool, str, int]:
+def run_system_command(command: str | list[str], timeout: int = 60) -> tuple[bool, str, int]:
     """
     Run a system command
     :param command: The command to run
@@ -222,7 +222,7 @@ def run_system_command(command: str | list[str]) -> tuple[bool, str, int]:
         shell = True
 
     try:
-        output = subprocess.check_output(command, shell=shell, stderr=subprocess.STDOUT, timeout=60)
+        output = subprocess.check_output(command, shell=shell, stderr=subprocess.STDOUT, timeout=timeout)
         return True, output.decode("utf-8", "ignore"), 0
     except subprocess.CalledProcessError as e:
         return False, e.output.decode("utf-8", "ignore"), e.returncode

@@ -24,7 +24,7 @@ def decompile(binary: str) -> bool:
         f"Failed to decompile {binary} with resources, trying without resources"
     )
     cmd = f"java -jar {apktool} d {binary} -o {binary[:-4]} --no-res -f"
-    if run_system_command(cmd)[0]:
+    if run_system_command(cmd, timeout=None)[0]:
         return True
 
     # Try to decompile without resources and without sources
@@ -32,7 +32,7 @@ def decompile(binary: str) -> bool:
         f"Failed to decompile {binary} without resources, trying without resources and without sources"
     )
     cmd = f"java -jar {apktool} d {binary} -o {binary[:-4]} --no-res --no-src -f"
-    if run_system_command(cmd)[0]:
+    if run_system_command(cmd, timeout=None)[0]:
         return True
 
     logger.warn(

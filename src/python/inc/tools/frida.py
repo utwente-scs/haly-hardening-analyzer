@@ -1,4 +1,5 @@
 import threading
+import time
 import frida
 from frida_tools.application import Reactor
 from inc.util import *
@@ -9,9 +10,22 @@ from models.app import App
 import logging
 from time import sleep
 import json
+from inc.tools.telnet import TelnetReverseShell
+from inc.tools.adb import adb
 
 logger = logging.getLogger("hardeninganalyzer")
 
+def start_frida_server(device: dict) -> None:
+    """
+    Start the Frida server on the device
+    """
+    logger.info("Starting Frida server")
+    if device["type"] == "physical" and "stealthy" in device["name"]:
+        if "telnet" not in device or not device["telnet"].is_connected():
+            Config().connect_telnet()
+        device["telnet"].send_command("/data/local/tmp/bins/frida/frida-server &")
+    else:
+        adb("shell /data/local/tmp/bins/frida/frida-server &", device["serial"])
 
 class FridaApplication:
     def __init__(
@@ -104,8 +118,14 @@ class FridaApplication:
                         "Could not connect to iPhone. Is it connected and is Frida running?"
                     )
                     sleep(1)
+                elif ("need Gadget to attach on jailed Android" in str(e)):
+                    logger.debug("starting frida")
+                    start_frida_server(Config().device)
+                    time.sleep(3)
                 else:
                     raise e
+            except Exception as e:
+                raise e
         self._main_pid = pid
         self._instrument(pid)
 

@@ -13,7 +13,7 @@ import frida.core
 from models.message import DynamicMessage
 import logging
 import subprocess
-from inc.tools.adb import is_device_connected, kill_server, force_stop
+from inc.tools.adb import is_device_connected, kill_server, force_stop, start_emulator, reboot_device, has_root, get_root
 
 logger = logging.getLogger("hardeninganalyzer")
 
@@ -41,57 +41,48 @@ def analyze(app: App) -> None:
         )
         return
     
-    def start_emulator(avd: str, snapshot: str = None, network_adapter: str = None)->subprocess.Popen:
-        # Start the emulator as a subprocess with the provided AVD and snapshot and use the network adapter, check if this is a tap device
-        
-        # Check if the emulator is already running
-        emulator_running = False
-        try:
-            emulator_running = (
-                subprocess.run(["adb", "devices"], capture_output=True)
-                .stdout.decode()
-                .find("emulator") != -1
-            )
-        except:
-            pass
-        
-        if emulator_running:
-            logger.info("Emulator already running")
-            return
-        
-        is_tap = False
-        if network_adapter is not None:
-            is_tap = network_adapter.startswith("tap")
-        
-        # Create commands for starting the emulator using the tap interface and if there is a snapshot or not
-        cmd = ["emulator", "-avd", avd]
-        if snapshot is not None:
-            cmd += ["-snapshot", snapshot]
-        if is_tap:
-            cmd += ["-net-tap", network_adapter]
-        if network_adapter is not None and not is_tap:
-            cmd += ["-net", network_adapter]
-        print(f"Starting emulator with command: {cmd}")
-        # Start the emulator
-        return subprocess.Popen(cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,)
-    
     emu_proc = None
 
     if Config().device is not None and Config().device["type"] == "emulator" and Config().device["avd"] is not None:
         print("Starting emulator")
-        #kill_server()
-	#time.sleep(2)
-        emu_proc = start_emulator(Config().device["avd"], Config().device["snapshot"], Config().device["network_adapter"])
-    time.sleep(10)
-    # Check if device is online
-    if is_device_connected(Config().device["serial"]):
-        logger.info("Device is online! Can continue...")
-    else:
-        logger.error("Device is not online! Exiting...")
-        emu_proc.terminate()
-        return
-    
+        emu_proc = start_emulator(Config().device)
+        time.sleep(10)
+        # Check if device is online
+        if is_device_connected(Config().device["serial"]):
+            logger.info("Device is online! Can continue...")
+            Config().device["emulator_proc"] = emu_proc
+        else:
+            logger.error("Device is not online! Exiting...")
+            emu_proc.terminate()
+            return
+    elif Config().device is not None and Config().device["type"] == "physical" and "stealthy" in Config().device["name"]:
+        connectedRooted = False
+        while not connectedRooted and is_device_connected(Config().device["serial"]):
+            logger.info("Trying to connect to stealth root device...")
+            # try to connect to the telnet server
+            if "telnet" not in Config().device and Config().connect_telnet():
+                logger.info("Connected to telnet server")
+                connectedRooted = Config().device["telnet"].is_connected()
+                continue
+            # if fails get root
+            if has_root(Config().device):
+                logger.info("Had root access")
+                connectedRooted = Config().device["telnet"].is_connected()
+                continue
+            elif get_root(Config().device):
+                logger.info("Got root access")
+                connectedRooted = Config().device["telnet"].is_connected()
+                continue
+            # if fails reboot
+            if reboot_device(Config().device):
+                logger.info("Rebooted device")
+                connectedRooted = Config().device["telnet"].is_connected()
+                continue
+            # otherwise give up
+            logger.error("Could not connect to stealth root device")
+            continue
+
+
     # Install app if not installed
     install_app(app)
 
@@ -153,13 +144,18 @@ def analyze(app: App) -> None:
             safe_mode = False
 
         start = time.time()
-        FridaApplication(
-            app,
-            {"context": context, "safeMode": "yes" if safe_mode else "no"},
-            on_message,
-            on_instrument,
-            Config().dynamic_analysis_timeout,
-        ).run()
+        try:
+            FridaApplication(
+                app,
+                {"context": context, "safeMode": "yes" if safe_mode else "no"},
+                on_message,
+                on_instrument,
+                Config().dynamic_analysis_timeout,
+            ).run()
+        except Exception as e:
+            logger.debug(f"Frida error: {e}")
+            reboot_device(Config().device)
+            continue
         if time.time() - start > Config().dynamic_analysis_timeout - 1:
             break
         time.sleep(1)
@@ -178,6 +174,8 @@ def analyze(app: App) -> None:
     if emu_proc is not None:
         emu_proc.terminate()
     	#kill_server()
+    if "telnet" in Config().device:
+        Config().device["telnet"].close()
 
     if attempt == 3:
         logger.error("App crashed too many times, aborting...")

@@ -34,7 +34,7 @@ def _execute_ipatool_command(command: str, error_ok: bool = False) -> str:
     if keychain_passphrase is not None:
         command += f" --keychain-passphrase {keychain_passphrase}"
 
-    (success, result, _) = run_system_command(f"{ipatool} {command}")
+    (success, result, _) = run_system_command(f"{ipatool} {command}", timeout=None)
     if "--auth-code" in result:
         auth_code = input("Please enter the 2FA code for your Apple account: ")
         command += f" --auth-code {auth_code}"

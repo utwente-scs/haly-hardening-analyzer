@@ -3,6 +3,7 @@ from functools import cache
 from os.path import exists, abspath
 from models.app import App
 import logging
+from inc.tools.telnet import TelnetReverseShell
 
 logger = logging.getLogger("hardeninganalyzer")
 
@@ -94,3 +95,16 @@ class Config(object):
             if mobile_os not in data["apps"] or data["apps"][mobile_os] is None:
                 continue
             self.apps.extend([App(app, mobile_os, self.dev_name) for app in data["apps"][mobile_os]])
+
+    def connect_telnet(self):
+        """
+        Connect to the telnet reverse shell
+        """
+        logger.info("Connecting to telnet reverse shell")
+        if self.device is not None and "telnet" not in self.device:
+            self.device["telnet"] = TelnetReverseShell(self.device["ip"], 10847)
+        elif self.device is not None and "telnet" in self.device and not self.device["telnet"].is_connected():
+            self.device["telnet"].connect()
+        else:
+            return False
+        return "telnet" in self.device and self.device["telnet"].is_connected()
