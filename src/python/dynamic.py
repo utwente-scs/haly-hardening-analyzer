@@ -173,6 +173,8 @@ def analyze(app: App) -> None:
         
     if emu_proc is not None:
         emu_proc.terminate()
+        #wait for emulator to close
+        is_device_connected(Config().device["serial"], disconnect=False)
     	#kill_server()
     if "telnet" in Config().device:
         Config().device["telnet"].close()

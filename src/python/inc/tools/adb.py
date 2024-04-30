@@ -7,10 +7,10 @@ from inc.tools.telnet import TelnetReverseShell
 
 logger = logging.getLogger("hardeninganalyzer")
 
-def is_device_connected(dev_serial: str) -> bool:
-    print(f"Waiting for {dev_serial} to start...")
-    started = adb("wait-for-device", dev_serial)
-    if started is False:
+def is_device_connected(dev_serial: str, disconnect: bool = False) -> bool:
+    print(f"Waiting for {dev_serial} to {"disconnect" if disconnect else "start"}...")
+    started = adb(f"wait-for-{"disconnect" if disconnect else "device"}", dev_serial)
+    if started is False and not disconnect:
         logger.error(f"Could not connect to Android device {dev_serial}. Is it connected?")
         exit(1)
     return started is not False
