@@ -1,5 +1,5 @@
 from detectors.detector import Detector
-from androguard.core.bytecodes import apk
+from androguard.core import apk
 from models.message import DynamicMessage
 from models.nativebinary import NativeBinary
 from inc.context import Context

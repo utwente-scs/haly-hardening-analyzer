@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from detectors.detector import Detector
 from inc.context import Context
 from models.message import SvcStaticMessage
-from androguard.core.bytecodes import apk
+from androguard.core import apk
 import frida.core
 
 if TYPE_CHECKING:

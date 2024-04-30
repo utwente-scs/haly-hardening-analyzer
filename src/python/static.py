@@ -1,9 +1,10 @@
 from models.app import App
-from androguard.core.bytecodes import apk
 from detectors import Detectors
 from inc.context import Context
 from models.nativebinary import NativeBinary
-from androguard.core.bytecodes.axml import ResParserError
+from androguard.core import apk
+from androguard.core.axml import ResParserError
+from androguard.core.axml import AXMLPrinter
 import json
 from inc.util import serializer
 from inc.config import Config
@@ -12,7 +13,6 @@ import os
 import logging
 import glob
 import plistlib
-from androguard.core.bytecodes.axml import AXMLPrinter
 import xmltodict
 
 logger = logging.getLogger("hardeninganalyzer")

@@ -1,5 +1,5 @@
-from androguard.core.bytecodes import apk
-from androguard.core.bytecodes.axml import AXMLPrinter
+from androguard.core import apk
+from androguard.core.axml import AXMLPrinter
 from detectors.detector import Detector
 from inc.context import Context
 from models.message import (

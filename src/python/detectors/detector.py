@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from abc import ABC
-from androguard.core.bytecodes import apk
+from androguard.core import apk
 import frida.core
 from models.message import DynamicMessage
 
