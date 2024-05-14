@@ -9,9 +9,15 @@ import glob
 import pandas as pd
 from tqdm import tqdm
 from pandasql import sqldf as psql
-from functools import cache
+from flask_caching import Cache
 
 flask_app = Flask(__name__)
+flask_app.config.from_object(__name__)
+flask_app.config["CACHE_TYPE"] = "SimpleCache" # better not use this type w. gunicorn
+flask_app.config["apps_cache"] = None
+flask_app.config["stats_cache"] = None
+cache = Cache(flask_app)
+
 
 
 @flask_app.route("/")
@@ -25,7 +31,7 @@ def _get_apps_data():
     return apps_data
 
 
-@cache
+@cache.cached()
 def _get_apps() -> list:
     """
     Get a list of apps and filter out apps that are not available on both iOS and Android
@@ -43,7 +49,7 @@ def _get_apps() -> list:
     return apps
 
 
-@cache
+# @cache.cached()
 def _get_libraries() -> Tuple[list, list]:
     """
     Get a list of known libraries
@@ -142,9 +148,9 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
         )
         cached_data = {}
         for file in ["apps", "app_infos", "app_results", "app_counts"]:
-            if exists(result_path(f"{file}.csv")):
+            if exists(result_path(f"{file}_{Config().device['name']}.csv")):
                 data = pd.read_csv(
-                    join(result_path(""), f"{file}.csv"),
+                    join(result_path(""), f"{file}_{Config().device['name']}.csv"),
                     low_memory=False,
                     escapechar="\\",
                 )
@@ -176,13 +182,22 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                     if app_os == "ios"
                     else app.package_id
                 )
-                json_file = join(
-                    result_path(app_os), package_id, f"{analysis_type}.json"
-                )
+                
+                if analysis_type == "dynamic":
+                    json_file = join(
+                        result_path(app_os), package_id, f"{analysis_type}_{Config().device['name']}.json"
+                    )
+                else:
+                    json_file = join(
+                        result_path(app_os), package_id, f"{analysis_type}.json"
+                    )
 
                 if not exists(json_file):
                     if analysis_type == "static":
                         print("static")
+                        # analysis_completed = False
+                    if analysis_type == "dynamic":
+                        print("dynamic", Config().device['name'])
                         # analysis_completed = False
                 else:
                     app_counts[
@@ -208,8 +223,16 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                     if app_os == "ios"
                     else android_to_app[app.package_id]["ios_bundle_id"]
                 )
-                json_file = join(result_path(app_os), app_id, f"{analysis_type}.json")
-
+                
+                if analysis_type == "dynamic":
+                    json_file = join(
+                        result_path(app_os), app_id, f"{analysis_type}_{Config().device['name']}.json"
+                    )
+                else:
+                    json_file = join(
+                        result_path(app_os), app_id, f"{analysis_type}.json"
+                    )
+                    
                 if not exists(json_file):
                     continue
 
@@ -257,7 +280,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                                     app_results.append(detection_result)
 
     # Sort by Android app name
-    apps = sorted(apps, key=lambda app: app["android_name"])
+    apps = sorted(apps, key=lambda app: app["android_id"])
 
     # Parse with pandas so we can use SQL
     print("Converting data to pandas...")
@@ -269,7 +292,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
         data = locals()[file]
         if file == "app_counts":
             data = pd.DataFrame(data.items(), columns=["key", "value"])
-        data.to_csv(result_path(f"{file}.csv"), index=False, escapechar="\\")
+        data.to_csv(result_path(f"{file}_{Config().device['name']}.csv"), index=False, escapechar="\\")
 
     return apps, app_infos, app_results, app_counts
 
@@ -729,11 +752,11 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     ###########################
     # Statistics per category #
     ###########################
-    categories = psql(
-        """SELECT DISTINCT ios_category FROM apps ORDER BY ios_category""", locals()
-    )["ios_category"].tolist()
-
     if "hardeningTechniquesPerCategory" in statistics_to_show:
+        categories = psql(
+            """SELECT DISTINCT android_category FROM apps ORDER BY android_category""", locals()
+        )["android_category"].tolist()
+        
         statistics["hardeningTechniquesPerCategory"] = {
             "title": "Average number of hardening techniques per category",
             "labels": categories,
@@ -759,14 +782,14 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         """
         query_results = psql(
             """
-            SELECT apps.ios_category, AVG(ios_results.detected_ios) AS detected_ios, AVG(android_results.detected_android) AS detected_android FROM apps
+            SELECT apps.android_category, AVG(ios_results.detected_ios) AS detected_ios, AVG(android_results.detected_android) AS detected_android FROM apps
             LEFT JOIN """
             + ios_inner_query
             + """ ON apps.ios_bundle_id = ios_results.app_id
             LEFT JOIN """
             + android_inner_query
             + """ ON apps.android_id = android_results.app_id
-            GROUP BY apps.ios_category
+            GROUP BY apps.android_category
         """,
             locals(),
         ).fillna(0)
@@ -774,7 +797,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         for _, result in query_results.iterrows():
             for os in ["android", "ios"]:
                 statistics["hardeningTechniquesPerCategory"]["values"][os][
-                    categories.index(result["ios_category"])
+                    categories.index(result["android_category"])
                 ] = result[f"detected_{os}"]
 
         # Sort labels, android values and ios values by descending order of the android values
@@ -1685,13 +1708,22 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
 
 
 @flask_app.route("/apps")
+@cache.cached()
 def apps():
-    (apps, statistics) = _get_statistics()
+    if cache.get("apps_cache") is None or cache.get("stats_cache") is None:
+        print(f'recalculating {cache.get("apps_cache")} and {cache.get("stats_cache")}')
+        (apps, statistics) = _get_statistics()
+        cache.set("apps_cache", apps)
+        cache.set("stats_cache", statistics)
+    else:
+        apps = cache.get("apps_cache")
+        statstics = cache.get("stats_cache")
 
     return render_template("apps.html", apps=apps, statistics=statistics)
 
 
 @flask_app.route("/apps/<path_app_id>")
+@cache.cached()
 def app(path_app_id):
     apps_data = _get_apps_data()
 
@@ -1750,4 +1782,5 @@ def app(path_app_id):
 
 
 def run():
-    flask_app.run(debug=True, host="127.0.0.1")
+    flask_app.run(debug=True, host="0.0.0.0")
+

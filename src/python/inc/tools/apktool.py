@@ -16,7 +16,7 @@ def decompile(binary: str) -> bool:
     # Decompile using apktool
     apktool = tools_path("apktool.jar")
     cmd = f"java -jar {apktool} d {binary} -o {binary[:-4]} -f"
-    if run_system_command(cmd)[0]:
+    if run_system_command(cmd, timeout=None)[0]:
         return True
 
     # Try to decompile without resources

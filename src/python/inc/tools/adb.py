@@ -76,6 +76,8 @@ def get_root(device: dict) -> bool:
         return stealth_root(device)
     elif device["type"] == "emulator":
         return True
+    elif device["type"] == "root":
+        return True
     else:
         return adb("root", device["serial"])
 
@@ -131,6 +133,9 @@ def reboot_device(device: dict) -> bool:
             if emu_proc is None:
                 return False
             device["emulator_proc"] = emu_proc
+        elif device["type"] == "root":
+            if not adb("reboot", device["serial"]):
+                return False
         rebooted = is_device_connected(device["serial"])
         if not rebooted:
             logger.error("Device did not reboot")

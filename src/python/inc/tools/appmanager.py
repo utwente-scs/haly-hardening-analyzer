@@ -105,7 +105,9 @@ def uninstall_app(app: App) -> bool:
     elif Context().is_android():
         success = adb(f"uninstall {app.package_id}", Config().dev)
         if not success:
-            logger.error(f"Failed to uninstall app {app.package_id}")
+            success = adb(f"shell pm uninstall {app.package_id}", Config().dev)
+            if not success:
+                logger.error(f"Failed to uninstall app {app.package_id}")
         return success
 
     return False

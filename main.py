@@ -244,7 +244,7 @@ def run_multidevice(cmd: list[str] | str, config: str, devices: list[str]):
     # Wait for all subprocesses to finish
     for process in processes:
         process[0].wait()
-        logger.debug("Subprocess %s has finished" % process[1])
+        logger.info("Subprocess %s has finished" % process[1])
 
 
 def run_multithreaded(cmd: list[str] | str, config: str, thread_amount: int):

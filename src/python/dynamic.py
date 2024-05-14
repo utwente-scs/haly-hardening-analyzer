@@ -13,6 +13,8 @@ import frida.core
 from models.message import DynamicMessage
 import logging
 import subprocess
+import psutil
+
 from inc.tools.adb import is_device_connected, kill_server, force_stop, start_emulator, reboot_device, has_root, get_root
 
 logger = logging.getLogger("hardeninganalyzer")
@@ -173,6 +175,9 @@ def analyze(app: App) -> None:
         
     if emu_proc is not None:
         emu_proc.terminate()
+
+        # while psutil.pid_exists(emu_proc.pid):
+        #     time.sleep(1)
         #wait for emulator to close
         is_device_connected(Config().device["serial"], disconnect=False)
     	#kill_server()

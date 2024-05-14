@@ -24,6 +24,8 @@ def start_frida_server(device: dict) -> None:
         if "telnet" not in device or not device["telnet"].is_connected():
             Config().connect_telnet()
         device["telnet"].send_command("/data/local/tmp/bins/frida/frida-server &")
+    elif device["type"] == "root":
+        adb("shell \"echo '/data/local/tmp/bins/frida/hlserver &'| /system/bin/kp\"", device["serial"])
     else:
         adb("shell /data/local/tmp/bins/frida/frida-server &", device["serial"])
 
