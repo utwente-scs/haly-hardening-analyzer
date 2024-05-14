@@ -15,7 +15,7 @@ dynamic_analysis_timeout: 30
 dynamic_analysis_ios_start_timeout: 120
 
 # Timeout and memory limit for radare2 analysis of individual binary files
-radare_timeout: 30
+radare_timeout: 120
 radare_memory_limit: 8 # GB
 
 # Radare2 hosts to use for static analysis
@@ -30,13 +30,6 @@ radare_servers:
 # The analyzer re-install the app via the binaries stored in the working directory or from the app store when needed
 # Setting this to false may cause errors when installing many apps at the same time because of full device storage
 uninstall_apps: True
-
-# Network adapter used for network traffic tracking and ip addresses of devices running through the adapter
-# Make sure that the adapter is either a hotspot to which the devices are connected or a proxy that is used by the devices
-network_adapter: wlan0
-ips:
-  android: 192.168.0.2
-  ios: 192.168.0.3
 
 # Login information for the Google Play Store to automatically download apk files
 # Can be obtained by e.g. using this app: https://github.com/whyorean/Authenticator/releases/
@@ -60,4 +53,28 @@ apps:
     - com.instagram.android
     - com.facebook.katana
   ios: []
-  
+
+# Devices to use for dynamic analysis.
+# Name is used to identify the device. If stealth root is used, include this in the name.
+# Serial is the serial number of the device. For emulators, this is typically emulator-5554. Use adb devices to find the serial number.
+# Type is the type of device. Options are emulator, root, and physical.
+# OS is the operating system of the device. Options are android and ios.
+# IP is the IP address of the device. This is used for network communication.
+# Network adapter is the network adapter of the device. This is used for network communication.
+# Snapshot is the name of the snapshot to restore on the emulator. This is used to reset the emulator to a clean state.
+# AVD is the name of the AVD to use for the emulator. This is used to start the emulator with the correct configuration.
+devices:
+  - name: device1
+    serial: emulator-5554
+    type: emulator
+    os: android
+    ip: 192.168.0.2
+    network_adapter: tap0
+    snapshot: fresh_wiped_frida
+    avd: haly_11_x86_google
+  - name: device2
+    serial: serial2
+    type: root
+    os: android
+    ip: 192.168.0.3
+    network_adapter: wlan0
