@@ -175,35 +175,32 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
 
         # Check if analysis of app is completed
         analysis_completed = True
-        for app_os in ["ios", "android"]:
-            for analysis_type in ["static", "dynamic"]:
-                package_id = (
-                    android_to_app[app.package_id]["ios_bundle_id"]
-                    if app_os == "ios"
-                    else app.package_id
-                )
-                
-                if analysis_type == "dynamic":
-                    json_file = join(
-                        result_path(app_os), package_id, f"{analysis_type}_{Config().device['name']}.json"
+        try:
+            for app_os in ["ios", "android"]:
+                for analysis_type in ["static", "dynamic"]:
+                    package_id = (
+                            android_to_app[app.package_id]["ios_bundle_id"]
+                        if app_os == "ios"
+                        else app.package_id
                     )
-                else:
-                    json_file = join(
-                        result_path(app_os), package_id, f"{analysis_type}.json"
-                    )
-
-                if not exists(json_file):
-                    if analysis_type == "static":
-                        print("static")
-                        # analysis_completed = False
+                    
                     if analysis_type == "dynamic":
-                        print("dynamic", Config().device['name'])
-                        # analysis_completed = False
-                else:
-                    app_counts[
-                        f"total{app_os.capitalize()}{analysis_type.capitalize()}"
-                    ] += 1
+                        json_file = join(
+                            result_path(app_os), package_id, f"{analysis_type}_{Config().device['name']}.json"
+                        )
+                    else:
+                        json_file = join(
+                            result_path(app_os), package_id, f"{analysis_type}.json"
+                        )
 
+                    if exists(json_file):
+                        app_counts[
+                            f"total{app_os.capitalize()}{analysis_type.capitalize()}"
+                        ] += 1
+        except KeyError:
+            print(f"KeyError {app.package_id}")
+            analysis_completed = False
+            continue
         if not analysis_completed:
             continue
 
@@ -939,7 +936,6 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         """,
             locals(),
         ).fillna(0)
-        print("hellloooo")
         for _, result in query_results.iterrows():
             print(list(permissions.keys()).index(result["permission_name"]))
             print(result)
@@ -1717,7 +1713,7 @@ def apps():
         cache.set("stats_cache", statistics)
     else:
         apps = cache.get("apps_cache")
-        statstics = cache.get("stats_cache")
+        statistics = cache.get("stats_cache")
 
     return render_template("apps.html", apps=apps, statistics=statistics)
 
@@ -1780,6 +1776,21 @@ def app(path_app_id):
 
     return render_template("app.html", app_id=app_id, results=results)
 
+@flask_app.route("/categories")
+def categories():
+    app_data = _get_apps_data()
+    
+    # Make a set of categories and a list of apps for each category
+    categories = {}
+    for app in app_data:
+        if app["android_category"] is not None:
+            if app["android_category"] not in categories:
+                categories[app["android_category"]] = []
+            categories[app["android_category"]].append(app)
+    # sort categories with most apps
+    categories = dict(sorted(categories.items(), key=lambda item: len(item[1]), reverse=True))
+    return render_template("categories.html", categories=categories)
+    
 
 def run():
     flask_app.run(debug=True, host="0.0.0.0")

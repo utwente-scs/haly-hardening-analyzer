@@ -5,6 +5,7 @@ from inc.util import serializer
 from inc.config import Config
 from os.path import dirname
 import os
+import signal
 import time
 import json
 from inc.tools.frida import FridaApplication
@@ -174,7 +175,8 @@ def analyze(app: App) -> None:
         uninstall_app(app)
         
     if emu_proc is not None:
-        emu_proc.terminate()
+        #emu_proc.terminate()
+        os.kill(emu_proc.pid, signal.SIGINT)
 
         # while psutil.pid_exists(emu_proc.pid):
         #     time.sleep(1)

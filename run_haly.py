@@ -79,6 +79,7 @@ def app_worker(app_stage):
 
     if not os.path.exists(app_analysis_path):
         os.makedirs(app_analysis_path)
+    if not os.path.exists(destination_path)
         # os.makedirs(os.path.join(android_path, id))
         if args.link:
             print(f"Linking apk: {full_path}->{destination_path}...")
@@ -219,7 +220,7 @@ else:
             stage = reverse_dict[parts[4].strip()]
             success = int(parts[5])
                         
-            if (args.retry and success == 0) or stage == 6:
+            if (args.retry and success == 0):
                 continue
             
             if success == 0:
@@ -242,7 +243,7 @@ apps_read = {app['app_id']: app['path'] for app in apps_read}
 # Remove the apps that are already done
 apps = {}
 for (id, _) in apps_read.items():
-    if len(apps) >= args.num_apps:
+    if args.num_apps is not None and len(apps) >= args.num_apps:
         break
     
     if id in failed_jobs:

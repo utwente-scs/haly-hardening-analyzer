@@ -11,7 +11,7 @@ apps = {}
 ids_file = sys.argv[1]
 out_file = sys.argv[2]
 
-with open(ids, "r") as ids_file:
+with open(ids_file, "r") as ids_file:
 	ids = json.load(ids_file)
 final_data = {
     'crawl_date': time.strftime('%Y-%m-%d %H:%M:%S'),
