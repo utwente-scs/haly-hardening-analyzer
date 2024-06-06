@@ -79,7 +79,7 @@ def app_worker(app_stage):
 
     if not os.path.exists(app_analysis_path):
         os.makedirs(app_analysis_path)
-    if not os.path.exists(destination_path)
+    if not os.path.exists(destination_path):
         # os.makedirs(os.path.join(android_path, id))
         if args.link:
             print(f"Linking apk: {full_path}->{destination_path}...")
