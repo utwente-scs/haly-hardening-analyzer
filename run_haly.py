@@ -40,23 +40,31 @@ def start_adb_server():
         return False, e.output.decode("utf-8", "ignore"), e.returncode
 
 def _run_analysis(os: str, config_path=str, stage: int = 1):
+    if device != "all":
+    	dev_arg = f'-dev {device}'
+    else:
+    	dev_arg = None
     kwargs = dict(bufsize=0,  # No buffering.
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Redirect stderr to stdout.
                 universal_newlines=True)
-    command = ["python3", "main.py", "-c", config_path, "-f", f"--{os}", stage_command_map[stage]]
+    command = ["python3", "main.py", "-c", config_path, dev_arg,"-f", f"--{os}", stage_command_map[stage]] if dev_arg is not None else ["python3", "main.py", "-c", config_path, "-f", f"--{os}", stage_command_map[stage]]
     proc = subprocess.Popen(command, **kwargs)
     error = False
+    critical = False
     log = ""
     with proc.stdout as output:
         for line in output:
             #print(line, end='')  # Process the output...
             log += line
+            if "adb: device offline" in line or ("adb: device " in line and " not found" in line):
+                error = True
+                critical = True
             if ("- ERROR -" in line and "- ERROR - App crashed too many times" not in line) or ("Exception" in line and "Traceback" in line):
                 error = True
     proc.wait()
     # if proc exited with error
-    return proc.returncode == 0 and not error, log
+    return proc.returncode == 0 and not error, log, critical
     
 def app_worker(app_stage):
     app = app_stage['app']
@@ -88,7 +96,11 @@ def app_worker(app_stage):
             print(f"Copying apk: {full_path}->{destination_path}...")
             shutil.copy(full_path, destination_path)
         else:
-            raise Exception("You need to specify either --link or --copy")
+            endTime = time.time()
+            out = f"You need to specify either --link or --copy: {id}"
+            ret = (id, startTime, endTime, out)
+            print(out)
+            raise Exception(ret)
         with open(os.path.join(app_analysis_path, "stage"), "w") as fp:
             fp.write("1")
             fp.flush()
@@ -119,7 +131,7 @@ def app_worker(app_stage):
         time.sleep(3)
         start_adb_server()
         time.sleep(3)
-    ret_code, out = _run_analysis(os=mos, config_path=thread_config_path, stage=stage)
+    ret_code, out, critical = _run_analysis(os=mos, config_path=thread_config_path, stage=stage)
     
     if stage == 6:
         kill_server()
@@ -130,7 +142,10 @@ def app_worker(app_stage):
 
     endTime = time.time()
     ret = (id, startTime, endTime, out)
-
+    if critical:
+        print(f'Critical error in {stage_command_map[stage]} analysis of {id}!')
+        # exit program
+        exit(1)
     if not ret_code:
         #print(f'Return code: {ret_code}')
         raise Exception(ret)
@@ -219,7 +234,8 @@ else:
             id = parts[1]
             stage = reverse_dict[parts[4].strip()]
             success = int(parts[5])
-                        
+
+            # Retry failed jobs      
             if (args.retry and success == 0):
                 continue
             
@@ -246,7 +262,7 @@ for (id, _) in apps_read.items():
     if args.num_apps is not None and len(apps) >= args.num_apps:
         break
     
-    if id in failed_jobs:
+    if id in failed_jobs and failed_jobs[id] < 5:
         print(f'Failed job {id} at stage {stage_command_map[failed_jobs[id]]}. Skipping...')
         continue
     
@@ -339,6 +355,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() if len(app
             else:
                 print(f'Stopping further stages for {id} due to failure.')
 for app_stage in single_thread_jobs:
+    # FIXME
     app = app_stage['app']
     stage = app_stage['stage']
     success = True

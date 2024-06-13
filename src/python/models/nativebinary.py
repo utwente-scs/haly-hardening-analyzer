@@ -73,7 +73,7 @@ class NativeBinary:
         except Exception as e:
             if "Cannot open" in str(e):
                 logger.error(
-                    f"Error analyzing binary {self.path}: Binary might be corrupt or memory limit was reached"
+                    f"Error analyzing binary {self.path}: Binary might be corrupt or memory limit was reached. Also double check radare2 is correctly installed."
                 )
             else:
                 logger.error(f"Error analyzing binary {self.path}: {e}")

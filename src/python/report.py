@@ -263,6 +263,11 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
 
                             if _should_ignore_detection(detection_result):
                                 continue
+                            
+                            if not ("pattern" in detection_result):
+                                detection_result["pattern"] = ""
+                            if not ("source" in detection_result):
+                                detection_result["source"] = ""
 
                             app_results.append(detection_result)
 
@@ -1435,6 +1440,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             SELECT DISTINCT app_id, os FROM app_results
             WHERE type = 'plain_http' 
             AND detector = 'connection'
+            AND data IS NOT NU
             AND data NOT LIKE '%ocsp%'
             AND data NOT LIKE '%o.lencr.org%'
             ORDER BY app_id, os
@@ -1453,7 +1459,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     #############################
     # Type of plaintext traffic #
     #############################
-    if "plaintextTrafficType" in statistics_to_show:
+    if "plaintextTrafficType" in statistics_to_show and "data" in app_results:
         query_results = psql(
             """
             SELECT DISTINCT app_id, os, data FROM app_results
@@ -1480,7 +1486,9 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         }
 
         for _, result in query_results.iterrows():
-            request = result["data"]
+            request = ""
+            if "data" in app_results:
+                request = result["data"]
             if "ocsp" in request or "o.lencr.org" in request:
                 statistics["plaintextTrafficType"]["values"][0] += 1
             elif any(
@@ -1547,7 +1555,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     ############################
     # Detection of TLS ciphers #
     ############################
-    if "tlsCipher" in statistics_to_show:
+    if "tlsCipher" in statistics_to_show and "data" in app_results:
         query_results = psql(
             """
             SELECT DISTINCT data, os, COUNT(*) AS count FROM app_results
@@ -1562,7 +1570,10 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         ciphers = {}
 
         for _, result in query_results.iterrows():
-            info = json.loads(result["data"])
+            if "data" in result:
+                info = json.loads(result["data"])
+            else:
+                continue
             cipher = info["cipher"]
             tls_version = info["version"]
             key = cipher + " (" + tls_version + ")"

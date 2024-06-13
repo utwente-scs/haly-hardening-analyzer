@@ -23,11 +23,21 @@ def start_frida_server(device: dict) -> None:
     if device["type"] == "physical" and "stealthy" in device["name"]:
         if "telnet" not in device or not device["telnet"].is_connected():
             Config().connect_telnet()
-        device["telnet"].send_command("/data/local/tmp/bins/frida/frida-server &")
+        device["telnet"].send_command("/data/local/tmp/bins/frida/frida-server -D &")
     elif device["type"] == "root":
-        adb("shell \"echo '/data/local/tmp/bins/frida/hlserver &'| /system/bin/kp\"", device["serial"])
+        adb("shell \"echo '/data/local/tmp/bins/frida/hlserver -D &'| /system/bin/kp\"", device["serial"])
     else:
-        adb("shell /data/local/tmp/bins/frida/frida-server &", device["serial"])
+        adb("shell /data/local/tmp/bins/frida/frida-server -D &", device["serial"])
+# def check frida_running() -> bool:
+#     """
+#     Check if the Frida server is running on the device with subprocess and frida-ps -U on host
+#     """
+#     logger.debug("Checking if Frida server is running")
+#     try:
+#         output = subprocess.check_output(["frida-ps", "-U"], stderr=subprocess.STDOUT)
+#         if "frida-server" in output.decode():
+#             return True
+
 
 class FridaApplication:
     def __init__(
@@ -56,7 +66,13 @@ class FridaApplication:
 
         self._device = None
         while self._device is None:
-            for device in frida.enumerate_devices():
+            devices = frida.enumerate_devices()
+            if len(devices) == 0:
+                logger.error("No connected devices found. Is a device connected?")
+                sleep(1)
+                continue
+            
+            for device in devices:
                 if device.type != "usb":
                     continue
                 if device.id != Config().device["serial"]:
