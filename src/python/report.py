@@ -123,6 +123,60 @@ def get_library(result: dict) -> str:
 
     return None
 
+def _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_id, analysis_type, device=None):
+    if not exists(json_file):
+        return
+
+    with open(json_file, "r") as f:
+        result = json.load(f)
+
+    for detector in result.keys():
+        if detector == "info":
+            if not isinstance(result[detector], dict):
+                continue
+
+            app_info = _normalize(result[detector])
+            app_info["os"] = app_os
+            app_info["app_id"] = app_id
+            app_info["other_app_id"] = other_app_id
+            app_info["analysis_type"] = analysis_type
+            app_infos.append(app_info)
+        else:
+            if not isinstance(result[detector], list):
+                continue
+
+            for detection_result in result[detector]:
+                detection_result = _normalize(detection_result)
+
+                detection_result["os"] = app_os
+                detection_result["app_id"] = app_id
+                detection_result["other_app_id"] = other_app_id
+                # DONE Add device for dynmaic?
+                detection_result["device"] = device
+                detection_result["analysis_type"] = analysis_type
+                detection_result["detector"] = detector
+                detection_result["library"] = get_library(detection_result)
+                
+                # # DONE Can remove?
+                # if _should_ignore_detection(detection_result):
+                #     continue
+                
+                if not ("pattern" in detection_result):
+                    detection_result["pattern"] = ""
+                if not ("source" in detection_result):
+                    detection_result["source"] = ""
+
+                app_results.append(detection_result)
+
+                if detection_result["detector"] == "tamper" and any(
+                    attest in detection_result["function"]
+                    for attest in ["IntegrityManager", "SafetyNetClient"]
+                ):
+                    # SafetyNet and Play Integrity also provide root, hooking and emulator detection
+                    for detector in ["root", "hooking", "emulation"]:
+                        detection_result = detection_result.copy()
+                        detection_result["detector"] = detector
+                        app_results.append(detection_result)
 
 def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
     """
@@ -136,9 +190,8 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
     app_counts = {
         "totalApps": 0,  # Number of apps in config to be analyzed
         "totalIosStatic": 0,  # Number of apps statically analyzed on iOS
-        "totalIosDynamic": 0,  # Number of apps dynamically analyzed on iOS
+        "totalIosDynamic": 0,  # Number of apps dynamically analyzed on iOS TODO remove this too
         "totalAndroidStatic": 0,  # Number of apps statically analyzed on Android
-        "totalAndroidDynamic": 0,  # Number of apps dynamically analyzed on Android
         "totalAnalyzed": 0,  # Number of apps that are statically analyzed on iOS and Android (might have failed dynamic analysis)
     }
 
@@ -148,9 +201,10 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
         )
         cached_data = {}
         for file in ["apps", "app_infos", "app_results", "app_counts"]:
-            if exists(result_path(f"{file}_{Config().device['name']}.csv")):
+            # DONE make this a generic result path. This one is the cached results
+            if exists(result_path(f"{file}.csv")):
                 data = pd.read_csv(
-                    join(result_path(""), f"{file}_{Config().device['name']}.csv"),
+                    join(result_path(""), f"{file}.csv"),
                     low_memory=False,
                     escapechar="\\",
                 )
@@ -184,19 +238,28 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                         else app.package_id
                     )
                     
+                    # DONE make this a for loop of all devices
                     if analysis_type == "dynamic":
-                        json_file = join(
-                            result_path(app_os), package_id, f"{analysis_type}_{Config().device['name']}.json"
-                        )
+                        for device in Config().devices:
+                            json_file = join(
+                                result_path(app_os), package_id, f"{analysis_type}_{device['name']}.json"
+                            )
+                            
+                            if exists(json_file):
+                                # DONE change to device total too
+                                key = f"total{app_os.capitalize()}{analysis_type.capitalize()}{device['name']}"
+                                if key not in app_counts:
+                                    app_counts[key] = 0
+                                app_counts[key] += 1
                     else:
                         json_file = join(
                             result_path(app_os), package_id, f"{analysis_type}.json"
                         )
 
-                    if exists(json_file):
-                        app_counts[
-                            f"total{app_os.capitalize()}{analysis_type.capitalize()}"
-                        ] += 1
+                        if exists(json_file):
+                            app_counts[
+                                f"total{app_os.capitalize()}{analysis_type.capitalize()}"
+                            ] += 1
         except KeyError:
             print(f"KeyError {app.package_id}")
             analysis_completed = False
@@ -221,65 +284,18 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                     else android_to_app[app.package_id]["ios_bundle_id"]
                 )
                 
+                # TODO make this a for loop of all devices
                 if analysis_type == "dynamic":
-                    json_file = join(
-                        result_path(app_os), app_id, f"{analysis_type}_{Config().device['name']}.json"
-                    )
+                    for device in Config().devices:
+                        json_file = join(
+                            result_path(app_os), app_id, f"{analysis_type}_{device['name']}.json"
+                        )
+                        _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_id, analysis_type, device)
                 else:
                     json_file = join(
                         result_path(app_os), app_id, f"{analysis_type}.json"
                     )
-                    
-                if not exists(json_file):
-                    continue
-
-                with open(json_file, "r") as f:
-                    result = json.load(f)
-
-                for detector in result.keys():
-                    if detector == "info":
-                        if not isinstance(result[detector], dict):
-                            continue
-
-                        app_info = _normalize(result[detector])
-                        app_info["os"] = app_os
-                        app_info["app_id"] = app_id
-                        app_info["other_app_id"] = other_app_id
-                        app_info["analysis_type"] = analysis_type
-                        app_infos.append(app_info)
-                    else:
-                        if not isinstance(result[detector], list):
-                            continue
-
-                        for detection_result in result[detector]:
-                            detection_result = _normalize(detection_result)
-
-                            detection_result["os"] = app_os
-                            detection_result["app_id"] = app_id
-                            detection_result["other_app_id"] = other_app_id
-                            detection_result["analysis_type"] = analysis_type
-                            detection_result["detector"] = detector
-                            detection_result["library"] = get_library(detection_result)
-
-                            if _should_ignore_detection(detection_result):
-                                continue
-                            
-                            if not ("pattern" in detection_result):
-                                detection_result["pattern"] = ""
-                            if not ("source" in detection_result):
-                                detection_result["source"] = ""
-
-                            app_results.append(detection_result)
-
-                            if detection_result["detector"] == "tamper" and any(
-                                attest in detection_result["function"]
-                                for attest in ["IntegrityManager", "SafetyNetClient"]
-                            ):
-                                # SafetyNet and Play Integrity also provide root, hooking and emulator detection
-                                for detector in ["root", "hooking", "emulation"]:
-                                    detection_result = detection_result.copy()
-                                    detection_result["detector"] = detector
-                                    app_results.append(detection_result)
+                    _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_id, analysis_type)
 
     # Sort by Android app name
     apps = sorted(apps, key=lambda app: app["android_id"])
@@ -294,7 +310,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
         data = locals()[file]
         if file == "app_counts":
             data = pd.DataFrame(data.items(), columns=["key", "value"])
-        data.to_csv(result_path(f"{file}_{Config().device['name']}.csv"), index=False, escapechar="\\")
+        data.to_csv(result_path(f"{file}.csv"), index=False, escapechar="\\")
 
     return apps, app_infos, app_results, app_counts
 
