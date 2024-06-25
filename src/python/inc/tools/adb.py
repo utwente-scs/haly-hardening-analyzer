@@ -155,7 +155,9 @@ def adb(cmd: str, dev_serial: str = None, ignore_errors: bool = False) -> str | 
     :param cmd: The command to run
     :return: The output of the command or False if an error occurred
     """
-    while True:
+    tries = 0
+    while tries < 5:
+        tries += 1
         if dev_serial is None:
             (success, output, _) = run_system_command(f"adb {cmd}")
         else:
@@ -163,10 +165,12 @@ def adb(cmd: str, dev_serial: str = None, ignore_errors: bool = False) -> str | 
         if success:
             return output
         else:
-            if "no devices/emulators found" in output:
+            if "no devices/emulators found" in output or f"device '{dev_serial}' not found" in output:
                 logger.error("Could not connect to Android device. Is it connected?")
                 sleep(2)
             else:
                 if not ignore_errors:
                     logger.error(f"adb {cmd} failed with output {output}")
                 return False
+    logger.error(f"adb {cmd} failed after {tries} tries")
+    return False
