@@ -1440,7 +1440,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             SELECT DISTINCT app_id, os FROM app_results
             WHERE type = 'plain_http' 
             AND detector = 'connection'
-            AND data IS NOT NU
+            AND data IS NOT NULL
             AND data NOT LIKE '%ocsp%'
             AND data NOT LIKE '%o.lencr.org%'
             ORDER BY app_id, os
@@ -1804,5 +1804,5 @@ def categories():
     
 
 def run():
-    flask_app.run(debug=True, host="0.0.0.0")
+    flask_app.run(debug=True, host="0.0.0.0", port=Config().flask_port)
 

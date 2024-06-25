@@ -31,19 +31,24 @@ def kill_server():
         return True, output.decode("utf-8", "ignore"), 0
     except subprocess.CalledProcessError as e:
         return False, e.output.decode("utf-8", "ignore"), e.returncode
-def start_adb_server():
-    command = "adb start-server"
+def check_adb():
+    command = "adb devices"
     try:
         output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, timeout=60)
-        return True, output.decode("utf-8", "ignore"), 0
+        # Check if there are devices in list, the first line is always "List of devices attached"
+        lines = output.decode("utf-8", "ignore").split("\n")
+        index = lines.index("List of devices attached")
+        if len(lines) > index + 1:
+            return True, output.decode("utf-8", "ignore"), 0
+        return False, output.decode("utf-8", "ignore"), 0
     except subprocess.CalledProcessError as e:
         return False, e.output.decode("utf-8", "ignore"), e.returncode
 
 def _run_analysis(os: str, config_path=str, stage: int = 1):
     if device != "all":
-    	dev_arg = f'-dev {device}'
+        dev_arg = f'-dev {device}'
     else:
-    	dev_arg = None
+        dev_arg = None
     kwargs = dict(bufsize=0,  # No buffering.
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Redirect stderr to stdout.
@@ -126,15 +131,15 @@ def app_worker(app_stage):
         os.fsync(config_file.fileno())
     
     # execute analysis
-    if stage == 6:
-        kill_server()
-        time.sleep(3)
-        start_adb_server()
-        time.sleep(3)
+    # if stage == 6:
+    #     kill_server()
+    #     time.sleep(3)
+    #     check_adb()
+    #     time.sleep(3)
     ret_code, out, critical = _run_analysis(os=mos, config_path=thread_config_path, stage=stage)
     
-    if stage == 6:
-        kill_server()
+    # if stage == 6:
+    #     kill_server()
     # remove the copy of the apk
     # copy_apk_path = os.path.join(destination_path, os.path.basename(full_path))
     #print(f'Removing config file: {thread_config_path}...')
@@ -258,13 +263,14 @@ apps_read = {app['app_id']: app['path'] for app in apps_read}
 
 # Remove the apps that are already done
 apps = {}
+found = False
 for (id, _) in apps_read.items():
     if args.num_apps is not None and len(apps) >= args.num_apps:
         break
-    
+
     if id in failed_jobs and failed_jobs[id] < 5:
         print(f'Failed job {id} at stage {stage_command_map[failed_jobs[id]]}. Skipping...')
-        continue
+        continue 
     
     if id in jobs_done:
         stage_list = range(jobs_done[id]+1, 7)
@@ -272,6 +278,8 @@ for (id, _) in apps_read.items():
         stage_list = range(1, 7)
     # remove [2,3,4] from stage_list and only add the stages that are specified
     stage_list = [x for x in stage_list if x not in [2, 3, 4] and (x == 1 and prepare or x == 5 and static or x == 6 and dynamic)]
+    if 6 not in stage_list and dynamic:
+        stage_list.append(6)
     if len(stage_list) > 0:
         apps[id] = stage_list
     

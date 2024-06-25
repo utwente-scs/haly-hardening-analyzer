@@ -21,6 +21,7 @@ class Config(object):
     dynamic_analysis_ios_start_timeout = 120
     uninstall_apps = True
     force = False
+    flask_port = 5000
 
     devices = [{"name": None, "serial": None, "type": None, "os": None, "ip": None, "network_adapter": None, "snapshot": None, "avd": None}]
     device = None
@@ -65,6 +66,7 @@ class Config(object):
             "app_store_email",
             "app_store_password",
             "android_abi",
+            "flask_port",
         ]:
             if key in data:
                 self.__setattr__(key, data[key])
