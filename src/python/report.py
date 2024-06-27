@@ -246,8 +246,8 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                             )
                             
                             if exists(json_file):
-                                # DONE change to device total too
-                                key = f"total{app_os.capitalize()}{analysis_type.capitalize()}{device['name']}"
+                                # DONE change to device total too totalAndroidDynamic<Device>
+                                key = f"total{app_os.capitalize()}{analysis_type.capitalize()}{device['name'].capitalize()}"
                                 if key not in app_counts:
                                     app_counts[key] = 0
                                 app_counts[key] += 1
