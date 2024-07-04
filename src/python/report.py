@@ -152,7 +152,7 @@ def _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_i
                 detection_result["app_id"] = app_id
                 detection_result["other_app_id"] = other_app_id
                 # DONE Add device for dynmaic?
-                detection_result["device"] = device
+                detection_result["device"] = device["name"] if device is not None else ""
                 detection_result["analysis_type"] = analysis_type
                 detection_result["detector"] = detector
                 detection_result["library"] = get_library(detection_result)
@@ -284,7 +284,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                     else android_to_app[app.package_id]["ios_bundle_id"]
                 )
                 
-                # TODO make this a for loop of all devices
+                # DONE make this a for loop of all devices
                 if analysis_type == "dynamic":
                     for device in Config().devices:
                         json_file = join(
@@ -510,19 +510,19 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         "hardeningTechniques",
         "hardeningTechniquesApps",
         "hardeningTechniquesConsistency",
-        "hardeningTechniquesDelta",
-        "hardeningTechniquesPerCategory",
-        "hardeningTechniquesPerPermission",
-        "hardeningTechniquesPerPermissionCount",
-        "permissionsDiff",
-        "jailbreaks",
-        "hookingFrameworks",
-        "plaintextTraffic",
-        "plaintextTrafficType",
-        "tlsCipher",
-        "hardeningTechniquesLibraries",
-        "hardeningTechniquesLibrariesNoCommon",
-        "libraries",
+        # "hardeningTechniquesDelta",
+        # "hardeningTechniquesPerCategory",
+        # "hardeningTechniquesPerPermission",
+        # "hardeningTechniquesPerPermissionCount",
+        # "permissionsDiff",
+        # "jailbreaks",
+        # "hookingFrameworks",
+        # "plaintextTraffic",
+        # "plaintextTrafficType",
+        # "tlsCipher",
+        # "hardeningTechniquesLibraries",
+        # "hardeningTechniquesLibrariesNoCommon",
+        # "libraries",
     ]
 
     hardening_techniques = {
@@ -541,6 +541,24 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
 
     # Get app analysis results
     (apps, app_infos, app_results, statistics) = _get_apps_results()
+    
+    app_results_static = app_results[app_results["analysis_type"] == "static"]
+    app_results_static_confident = app_results_static[app_results_static["confident"] == True]
+    app_results_static_not_confident = app_results_static[app_results_static["confident"] == False]
+        
+    devices = Config().devices
+    app_results_dynamic = {
+        device["name"]: app_results[(app_results["analysis_type"] == "dynamic") & (app_results["device"] == device["name"])]
+        for device in devices
+    }
+    app_results_dynamic_confident = {
+        device["name"]: app_results_dynamic[device["name"]][app_results_dynamic[device["name"]]["confident"] == True]
+        for device in devices
+    }
+    app_results_dynamic_not_confident = {
+        device["name"]: app_results_dynamic[device["name"]][app_results_dynamic[device["name"]]["confident"] == False]
+        for device in devices
+    }
 
     print("Calculating statistics...")
     progress = tqdm(range(len(statistics_to_show)))
@@ -555,35 +573,48 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             "values": {
                 "androidStatic": [0] * n_techs,
                 "androidStatic?": [0] * n_techs,
-                "androidDynamic": [0] * n_techs,
-                "androidDynamic?": [0] * n_techs,
                 "iosStatic": [0] * n_techs,
                 "iosStatic?": [0] * n_techs,
                 "iosDynamic": [0] * n_techs,
                 "iosDynamic?": [0] * n_techs,
             },
         }
-
-        apps_inner_query = """
-            (SELECT detector, analysis_type, os, app_id, CASE WHEN SUM(confident) > 0 THEN 1 ELSE 0 END AS confident
-            FROM app_results
-            GROUP BY detector, analysis_type, os, app_id) app_unique_results
-        """
-        query_results = psql(
-            """
-            SELECT detector, analysis_type, os, confident, COUNT(DISTINCT app_id) AS count
-            FROM """
-            + apps_inner_query
-            + """
-            GROUP BY detector, analysis_type, os, confident
-            """,
-            locals(),
-        )
-        for _, result in query_results.iterrows():
+        for device in Config().devices:
+            statistics["hardeningTechniques"]["values"][f"androidDynamic_{device['name'].capitalize()}"] = [0] * n_techs
+            statistics["hardeningTechniques"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = [0] * n_techs
+            
+        apps_results_grouped = app_results.groupby(["detector", "analysis_type", "os", "app_id", "device"])
+        apps_results_grouped_confidence = apps_results_grouped['confident'].sum().reset_index()
+        apps_results_grouped_confidence['confident'] = apps_results_grouped_confidence['confident'].apply(lambda x: 1 if x > 0 else 0)
+        
+        print(apps_results_grouped_confidence)
+        # apps_inner_query = """
+        #     (SELECT detector, analysis_type, os, app_id, CASE WHEN SUM(confident) > 0 THEN 1 ELSE 0 END AS confident
+        #     FROM app_results
+        #     GROUP BY detector, analysis_type, os, app_id) app_unique_results
+        # """
+        technique_counts = apps_results_grouped_confidence.groupby(['detector', 'analysis_type', 'os', 'confident',"device"])['app_id'].nunique().reset_index()
+        technique_counts.rename(columns={'app_id': 'count'}, inplace=True)
+        # query_results = apps_results_grouped.groupby(['detector', 'analysis_type', 'os', 'confident']).agg(count = ('app_id', 'nunique')).reset_index()
+        # query_results = psql(
+        #     """
+        #     SELECT detector, analysis_type, os, confident, COUNT(DISTINCT app_id) AS count
+        #     FROM """
+        #     + apps_inner_query
+        #     + """
+        #     GROUP BY detector, analysis_type, os, confident
+        #     """,
+        #     locals(),
+        # )
+        
+        for _, result in technique_counts.iterrows():
             if result["detector"] in hardening_techniques:
                 key = f'{result["os"]}{result["analysis_type"].capitalize()}'
+                if result["analysis_type"] == "dynamic":
+                    key += f'_{result["device"].capitalize()}'
                 if result["confident"] == 0:
                     key += "?"
+                print(key)
                 statistics["hardeningTechniques"]["values"][key][
                     i_techs.index(result["detector"])
                 ] = result["count"]
@@ -600,26 +631,58 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             "values": {"android": [], "ios": []},
         }
 
-        query_results = psql(
-            """
-            SELECT app_infos.os, 
-            CASE WHEN app_hardening_count IS NULL THEN 0 ELSE app_hardening_count END AS hardening_count, 
-            COUNT(DISTINCT app_infos.app_id) app_count 
-            FROM app_infos 
-            LEFT JOIN (
-                SELECT app_id, os, COUNT(DISTINCT detector) AS app_hardening_count 
-                FROM app_results 
-                WHERE detector != 'svc' AND detector != 'connection' AND detector != 'screenreader' 
-                AND confident = 1 
-                GROUP BY app_id, OS
-            ) hardening 
-            ON hardening.os = app_infos.os AND hardening.app_id = app_infos.app_id 
-            WHERE analysis_type = 'static' 
-            GROUP BY app_infos.os, app_hardening_count
-            ORDER BY app_infos.os, hardening_count ASC; 
-            """,
-            locals(),
-        )
+        # query_results = psql(
+        #     """
+        #     SELECT app_infos.os, 
+        #     CASE WHEN app_hardening_count IS NULL THEN 0 ELSE app_hardening_count END AS hardening_count, 
+        #     COUNT(DISTINCT app_infos.app_id) app_count 
+        #     FROM app_infos 
+        #     LEFT JOIN (
+        #         SELECT app_id, os, COUNT(DISTINCT detector) AS app_hardening_count 
+        #         FROM app_results 
+        #         WHERE detector != 'svc' AND detector != 'connection' AND detector != 'screenreader' 
+        #         AND confident = 1 
+        #         GROUP BY app_id, OS
+        #     ) hardening 
+        #     ON hardening.os = app_infos.os AND hardening.app_id = app_infos.app_id 
+        #     WHERE analysis_type = 'static' 
+        #     GROUP BY app_infos.os, app_hardening_count
+        #     ORDER BY app_infos.os, hardening_count ASC; 
+        #     """,
+        #     locals(),
+        # )
+
+        # Perform the subquery
+        hardening = (app_results[(app_results['detector'] != 'svc') &
+                                (app_results['detector'] != 'connection') &
+                                (app_results['detector'] != 'screenreader') &
+                                (app_results['confident'] == 1)]
+                    .groupby(['app_id', 'os'])['detector']
+                    .nunique()
+                    .reset_index()
+                    .rename(columns={'detector': 'app_hardening_count'}))
+
+        # Perform the left join
+        merged = pd.merge(app_infos, hardening, how='left', left_on=['app_id', 'os'], right_on=['app_id', 'os'])
+
+        # Replace null values in `app_hardening_count` with 0
+        merged['app_hardening_count'] = merged['app_hardening_count'].fillna(0)
+
+        # Filter where analysis_type is 'static'
+        filtered = merged[merged['analysis_type'] == 'static']
+
+        # Group by `os` and `app_hardening_count` and count distinct `app_id`
+        query_results = (filtered.groupby(['os', 'app_hardening_count'])['app_id']
+                .nunique()
+                .reset_index()
+                .rename(columns={'app_id': 'app_count'}))
+
+        # Rename the column to match the desired output
+        query_results = query_results.rename(columns={'app_hardening_count': 'hardening_count'})
+
+        # Order the result
+        query_results = query_results.sort_values(by=['os', 'hardening_count'])
+
         cum_sum = {"android": 0, "ios": 0}
         for _, result in query_results.iterrows():
             cum_sum[result["os"]] += result["app_count"]
@@ -650,39 +713,90 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             },
         }
 
-        ios_inner_query = """
-            (SELECT detector, app_id, 1 AS detected_ios
-            FROM app_results
-            WHERE confident = 1
-            AND os = 'ios'
-            GROUP BY detector, app_id) ios_results
-        """
-        android_inner_query = """
-            (SELECT detector, app_id, 1 AS detected_android
-            FROM app_results
-            WHERE confident = 1
-            AND os = 'android'
-            GROUP BY detector, app_id) android_results
-        """
-        techniques_inner_query = """
-            (SELECT DISTINCT detector FROM app_results WHERE detector != 'svc' AND detector != 'connection') techniques
-        """
-        query_results = psql(
-            """
-            SELECT techniques.detector, ios_results.detected_ios, android_results.detected_android, COUNT(*) AS app_count FROM apps
-            CROSS JOIN """
-            + techniques_inner_query
-            + """
-            LEFT JOIN """
-            + ios_inner_query
-            + """ ON apps.ios_bundle_id = ios_results.app_id AND ios_results.detector = techniques.detector
-            LEFT JOIN """
-            + android_inner_query
-            + """ ON apps.android_id = android_results.app_id AND android_results.detector = techniques.detector
-            GROUP BY techniques.detector, ios_results.detected_ios, android_results.detected_android
-        """,
-            locals(),
-        ).fillna(0)
+        # ios_inner_query = """
+        #     (SELECT detector, app_id, 1 AS detected_ios
+        #     FROM app_results
+        #     WHERE confident = 1
+        #     AND os = 'ios'
+        #     GROUP BY detector, app_id) ios_results
+        # """
+        # android_inner_query = """
+        #     (SELECT detector, app_id, 1 AS detected_android
+        #     FROM app_results
+        #     WHERE confident = 1
+        #     AND os = 'android'
+        #     GROUP BY detector, app_id) android_results
+        # """
+        # techniques_inner_query = """
+        #     (SELECT DISTINCT detector FROM app_results WHERE detector != 'svc' AND detector != 'connection') techniques
+        # """
+        
+        # print("""
+        #     SELECT techniques.detector, ios_results.detected_ios, android_results.detected_android, COUNT(*) AS app_count FROM apps
+        #     CROSS JOIN """
+        #     + techniques_inner_query
+        #     + """
+        #     LEFT JOIN """
+        #     + ios_inner_query
+        #     + """ ON apps.ios_bundle_id = ios_results.app_id AND ios_results.detector = techniques.detector
+        #     LEFT JOIN """
+        #     + android_inner_query
+        #     + """ ON apps.android_id = android_results.app_id AND android_results.detector = techniques.detector
+        #     GROUP BY techniques.detector, ios_results.detected_ios, android_results.detected_android
+        # """)
+        # query_results = psql(
+        #     """
+        #     SELECT techniques.detector, ios_results.detected_ios, android_results.detected_android, COUNT(*) AS app_count FROM apps
+        #     CROSS JOIN """
+        #     + techniques_inner_query
+        #     + """
+        #     LEFT JOIN """
+        #     + ios_inner_query
+        #     + """ ON apps.ios_bundle_id = ios_results.app_id AND ios_results.detector = techniques.detector
+        #     LEFT JOIN """
+        #     + android_inner_query
+        #     + """ ON apps.android_id = android_results.app_id AND android_results.detector = techniques.detector
+        #     GROUP BY techniques.detector, ios_results.detected_ios, android_results.detected_android
+        # """,
+        #     locals(),
+        # ).fillna(0)
+        
+        techniques = app_results[(app_results['detector'] != 'svc') & 
+                         (app_results['detector'] != 'connection')]['detector'].drop_duplicates().reset_index(drop=True)
+
+        # Perform the ios_results subquery
+        ios_results = (app_results[(app_results['confident'] == 1) & 
+                                (app_results['os'] == 'ios')]
+                    .groupby(['detector', 'app_id'])
+                    .size()
+                    .reset_index(name='detected_ios')
+                    .assign(detected_ios=1))
+
+        # Perform the android_results subquery
+        android_results = (app_results[(app_results['confident'] == 1) & 
+                                    (app_results['os'] == 'android')]
+                        .groupby(['detector', 'app_id'])
+                        .size()
+                        .reset_index(name='detected_android')
+                        .assign(detected_android=1))
+
+        # Create a DataFrame for cross join (Cartesian product)
+        techniques_cross = pd.DataFrame({'key': 0, 'detector': techniques})
+        apps['key'] = 0
+        apps_techniques = pd.merge(apps, techniques_cross, on='key').drop('key', axis=1)
+
+        # Perform the left join with ios_results
+        merged_ios = pd.merge(apps_techniques, ios_results, how='left', left_on=['ios_bundle_id', 'detector'], right_on=['app_id', 'detector'])
+        merged_ios['detected_ios'] = merged_ios['detected_ios'].fillna(0)
+
+        # Perform the left join with android_results
+        merged_android = pd.merge(merged_ios, android_results, how='left', left_on=['android_id', 'detector'], right_on=['app_id', 'detector'])
+        merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
+
+        # Group by techniques.detector, ios_results.detected_ios, android_results.detected_android and count
+        query_results = (merged_android.groupby(['detector', 'detected_ios', 'detected_android'])
+                .size()
+                .reset_index(name='app_count')).fillna(0)
 
         for _, result in query_results.iterrows():
             if result["detector"] not in hardening_techniques:
@@ -741,7 +855,13 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             GROUP BY apps.android_id) diff_results
         """
         )
-
+        print("""
+            SELECT different, COUNT(*) AS app_count
+            FROM """
+            + different_inner_query
+            + """
+            GROUP BY different
+        """)
         query_results = psql(
             """
             SELECT different, COUNT(*) AS app_count
@@ -798,6 +918,17 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             AND os = 'android'
             GROUP BY app_id) android_results
         """
+        print(
+            """
+            SELECT apps.android_category, AVG(ios_results.detected_ios) AS detected_ios, AVG(android_results.detected_android) AS detected_android FROM apps
+            LEFT JOIN """
+            + ios_inner_query
+            + """ ON apps.ios_bundle_id = ios_results.app_id
+            LEFT JOIN """
+            + android_inner_query
+            + """ ON apps.android_id = android_results.app_id
+            GROUP BY apps.android_category
+        """)
         query_results = psql(
             """
             SELECT apps.android_category, AVG(ios_results.detected_ios) AS detected_ios, AVG(android_results.detected_android) AS detected_android FROM apps
