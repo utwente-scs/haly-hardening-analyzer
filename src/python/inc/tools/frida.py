@@ -23,8 +23,10 @@ def start_frida_server(device: dict) -> None:
     if device["type"] == "physical" and "stealthy" in device["name"]:
         if "telnet" not in device or not device["telnet"].is_connected():
             Config().connect_telnet()
+        logger.debug("Starting Frida server on stealthy device")
         device["telnet"].send_command("/data/local/tmp/bins/frida/frida-server -D &")
     elif device["type"] == "root":
+        logger.debug("Starting Frida server on rooted device")
         adb("shell \"echo '/data/local/tmp/bins/frida/hlserver -D &'| /system/bin/kp\"", device["serial"])
     else:
         adb("shell /data/local/tmp/bins/frida/frida-server -D &", device["serial"])
