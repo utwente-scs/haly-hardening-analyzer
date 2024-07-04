@@ -155,6 +155,11 @@
 
         function getOptions(stack=false, yMax={{ statistics['totalAnalyzed'] }}) {
             return {
+                interaction: {
+                    mode: 'x',
+                    intersect: true,
+                    includeInvisible: false
+                },
                 scales: {
                     x: {
                         stacked: stack
@@ -167,6 +172,26 @@
                 plugins: {
                     tooltip: {
                         callbacks: {
+                            footer: function(tooltipItems) {
+                                if (!stack) {
+                                    return;
+                                }
+                                const stacked = tooltipItems[0].parsed._stacks.y._visualValues;
+                                const stackValues = Object.values(stacked);
+                                if (Array.isArray(stackValues)) {
+                                    const stackTotal = stackValues.reduce((acc, val) => acc + val, 0);
+                                    if (typeof yMax === 'undefined' || yMax === null) {
+                                        return `Total: ${stackTotal}`;
+                                    } else {
+                                        return `Total: ${stackTotal} (${((stackTotal / yMax) * 100).toFixed(2)}%)`;
+                                    }
+                                } else {
+                                    return 'Total: N/A';
+                                }
+                            },
+                            beforeLabel: function(tooltipItem) {
+                                return tooltipItem.dataset.label;
+                            },	
                             label: function(tooltipItem) {
                                 const data = tooltipItem.dataset.data;
                                 const currentValue = data[tooltipItem.dataIndex];
@@ -198,64 +223,40 @@
             }
         }
 
+        const osColors = {
+            'android': '#3DDC84',
+            'android?': '#97deb7',
+            'ios': '#666666',
+            'ios?': '#999999'
+        };
+
+        function getColorFromKey(key) {
+            var key_index = "";
+            if (key.includes("android")) {
+                key_index = "android";
+            } else if (key.includes("ios")) {
+                key_index = "ios";
+            }
+            if (key.includes("?")) {
+                key_index += "?";
+            }
+            return osColors[key_index];
+        }
+
         {% if 'hardeningTechniques' in statistics %}
         new Chart(document.getElementById('hardeningTechniques'), {
             type: 'bar',
             data: {
                 labels: {{ statistics['hardeningTechniques']['labels'] | tojson }},
                 datasets: [
+                    {% for key, value in statistics['hardeningTechniques']['values'].items() %}
                     {
-                        label: 'Android static',
-                        data: {{ statistics['hardeningTechniques']['values']['androidStatic'] | tojson }},
-                        backgroundColor: '#3DDC84',
-                        hoverBackgroundColor: '#3DDC84',
-                        stack: 'androidStatic'
+                        label: '{{ key.replace("android", "Android ").replace("ios", "iOS ").replace("Dynamic_", "Dynamic ").replace('?', '(uncertain)') }}',
+                        data: {{ value | tojson }},
+                        backgroundColor: {% if "Dynamic" in key %} pattern.draw('diagonal', getColorFromKey('{{ key }}')) {% else %} getColorFromKey('{{ key }}') {% endif %},
+                        stack: '{{ key.replace('?', '')}}'
                     },
-                    {
-                        label: 'Android static (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['androidStatic?'] | tojson }},
-                        backgroundColor: '#97deb7',
-                        hoverBackgroundColor: '#97deb7',
-                        stack: 'androidStatic'
-                    },
-                    {
-                        label: 'Android dynamic',
-                        data: {{ statistics['hardeningTechniques']['values']['androidDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#3DDC84'),
-                        stack: 'androidDynamic'
-                    },
-                    {
-                        label: 'Android dynamic (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['androidDynamic?'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#97deb7'),
-                        stack: 'androidDynamic'
-                    },
-                    {
-                        label: 'iOS static',
-                        data: {{ statistics['hardeningTechniques']['values']['iosStatic'] | tojson }},
-                        backgroundColor: '#666666',
-                        hoverBackgroundColor: '#666666',
-                        stack: 'iosStatic'
-                    },
-                    {
-                        label: 'iOS static (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['iosStatic?'] | tojson }},
-                        backgroundColor: '#999999',
-                        hoverBackgroundColor: '#999999',
-                        stack: 'iosStatic'
-                    },
-                    {
-                        label: 'iOS dynamic',
-                        data: {{ statistics['hardeningTechniques']['values']['iosDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#666666'),
-                        stack: 'iosDynamic'
-                    },
-                    {
-                        label: 'iOS dynamic (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['iosDynamic?'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#999999'),
-                        stack: 'iosDynamic'
-                    }
+                    {% endfor %}
                 ]
             },
             options: getOptions(true)
@@ -463,28 +464,14 @@
             data: {
                 labels: {{ statistics['hookingFrameworks']['labels'] | tojson }},
                 datasets: [
+                    {% for key, value in statistics['hookingFrameworks']['values'].items() %}
                     {
-                        label: 'Android static',
-                        data: {{ statistics['hookingFrameworks']['values']['androidStatic'] | tojson }},
-                        backgroundColor: '#3DDC84',
-                        hoverBackgroundColor: '#3DDC84'
+                        label: '{{ key.replace("android", "Android ").replace("ios", "iOS ").replace("Dynamic_", "Dynamic ").replace('?', '(uncertain)') }}',
+                        data: {{ value | tojson }},
+                        backgroundColor: {% if "Dynamic" in key %} pattern.draw('diagonal', getColorFromKey('{{ key }}')) {% else %} getColorFromKey('{{ key }}') {% endif %},
+                        stack: '{{ key.replace('?', '')}}'
                     },
-                    {
-                        label: 'Android dynamic',
-                        data: {{ statistics['hookingFrameworks']['values']['androidDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#3DDC84')
-                    },
-                    {
-                        label: 'iOS static',
-                        data: {{ statistics['hookingFrameworks']['values']['iosStatic'] | tojson }},
-                        backgroundColor: '#666666',
-                        hoverBackgroundColor: '#666666',
-                    },
-                    {
-                        label: 'iOS dynamic',
-                        data: {{ statistics['hookingFrameworks']['values']['iosDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#666666')
-                    }
+                    {% endfor %}
                 ]
             },
             options: getOptions(false)

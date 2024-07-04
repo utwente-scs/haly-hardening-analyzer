@@ -11,7 +11,7 @@ import logging
 from time import sleep
 import json
 from inc.tools.telnet import TelnetReverseShell
-from inc.tools.adb import adb
+from inc.tools.adb import adb, get_root
 
 logger = logging.getLogger("hardeninganalyzer")
 
@@ -26,6 +26,7 @@ def start_frida_server(device: dict) -> None:
         logger.debug("Starting Frida server on stealthy device")
         device["telnet"].send_command("/data/local/tmp/bins/frida/frida-server -D &")
     elif device["type"] == "root":
+        logger.debug("Starting Frida server on rooted device")
         logger.debug("Starting Frida server on rooted device")
         adb("shell \"echo '/data/local/tmp/bins/frida/hlserver -D &'| /system/bin/kp\"", device["serial"])
     else:

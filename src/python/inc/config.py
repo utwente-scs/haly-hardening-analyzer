@@ -91,7 +91,7 @@ class Config(object):
             self.dev_name = self.devices[0]["name"]
             self.ips = {self.devices[0]["os"]: self.devices[0]["ip"]}
             self.network_adapter = self.devices[0]["network_adapter"]
-        print(f"Device: {self.device}")
+        logger.info(f"Device: {self.device}")
         
         for mobile_os in ["ios", "android"]:
             if mobile_os not in data["apps"] or data["apps"][mobile_os] is None:
@@ -104,9 +104,14 @@ class Config(object):
         """
         logger.info("Connecting to telnet reverse shell")
         if self.device is not None and "telnet" not in self.device:
+            logger.info("Creating telnet reverse shell")
             self.device["telnet"] = TelnetReverseShell(self.device["ip"], 10847)
+            logger.info("Connected to telnet reverse shell")
         elif self.device is not None and "telnet" in self.device and not self.device["telnet"].is_connected():
+            logger.info("Reconnecting to telnet reverse shell")
             self.device["telnet"].connect()
+            logger.info("Connected to telnet reverse shell")
         else:
+            logger.warning("Could not connect to telnet reverse shell")
             return False
         return "telnet" in self.device and self.device["telnet"].is_connected()
