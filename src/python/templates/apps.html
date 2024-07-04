@@ -173,6 +173,9 @@
                     tooltip: {
                         callbacks: {
                             footer: function(tooltipItems) {
+                                if (!stack) {
+                                    return;
+                                }
                                 const stacked = tooltipItems[0].parsed._stacks.y._visualValues;
                                 const stackValues = Object.values(stacked);
                                 if (Array.isArray(stackValues)) {
@@ -461,28 +464,14 @@
             data: {
                 labels: {{ statistics['hookingFrameworks']['labels'] | tojson }},
                 datasets: [
+                    {% for key, value in statistics['hookingFrameworks']['values'].items() %}
                     {
-                        label: 'Android static',
-                        data: {{ statistics['hookingFrameworks']['values']['androidStatic'] | tojson }},
-                        backgroundColor: '#3DDC84',
-                        hoverBackgroundColor: '#3DDC84'
+                        label: '{{ key.replace("android", "Android ").replace("ios", "iOS ").replace("Dynamic_", "Dynamic ").replace('?', '(uncertain)') }}',
+                        data: {{ value | tojson }},
+                        backgroundColor: {% if "Dynamic" in key %} pattern.draw('diagonal', getColorFromKey('{{ key }}')) {% else %} getColorFromKey('{{ key }}') {% endif %},
+                        stack: '{{ key.replace('?', '')}}'
                     },
-                    {
-                        label: 'Android dynamic',
-                        data: {{ statistics['hookingFrameworks']['values']['androidDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#3DDC84')
-                    },
-                    {
-                        label: 'iOS static',
-                        data: {{ statistics['hookingFrameworks']['values']['iosStatic'] | tojson }},
-                        backgroundColor: '#666666',
-                        hoverBackgroundColor: '#666666',
-                    },
-                    {
-                        label: 'iOS dynamic',
-                        data: {{ statistics['hookingFrameworks']['values']['iosDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#666666')
-                    }
+                    {% endfor %}
                 ]
             },
             options: getOptions(false)
