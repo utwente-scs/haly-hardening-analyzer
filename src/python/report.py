@@ -210,6 +210,8 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                 )
                 if file == "app_counts":
                     data = dict(zip(data["key"], data["value"]))
+                if file == "app_results":
+                    data["confident"] = data["confident"].astype(bool)
 
                 cached_data[file] = data
 

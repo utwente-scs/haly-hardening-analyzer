@@ -31,8 +31,9 @@
 
         <div class="mb-4">
             <b>Total number of apps in dataset: </b> {{ statistics['totalApps'] }}<br>
-            <b>Total number of statically analyzed Android apps:</b> {{ statistics['totalAndroidStatic'] }}<br>
-            <b>Total number of dynamically analyzed apps Android apps:</b> {{ statistics['totalAndroidDynamic'] }}<br>
+            {% for key, value in statistics.items() if 'total' in key and 'Android' in key %}
+            <b>Total number of {{ re.findall('[A-Z][^A-Z]*', key)[1].lower() }}ally analyzed apps{% if re.findall('[A-Z][^A-Z]*', key)|length > 2 %} ({{ re.findall('[A-Z][^A-Z]*', key)[2] }}){% endif %}:</b> {{ value }}<br>
+            {% endfor %}
             <b>Total number of statically analyzed iOS apps:</b> {{ statistics['totalIosStatic'] }}<br>
             <b>Total number of dynamically analyzed iOS apps:</b> {{ statistics['totalIosDynamic'] }}<br>
             <b>Total number of statically analyzed apps on iOS and Android:</b> {{ statistics['totalAnalyzed'] }}<br>
@@ -157,8 +158,8 @@
             return {
                 interaction: {
                     mode: 'x',
-                    intersect: true,
-                    includeInvisible: false
+                    intersect: false,
+                    includeInvisible: true
                 },
                 scales: {
                     x: {
@@ -198,12 +199,12 @@
                                 if (yMax == null) {
                                     const total = data.reduce((acc, val) => acc + val, 0);
                                     const percentage = ((currentValue / total) * 100).toFixed(2);
-                                    return `${currentValue.toFixed(2)} (${percentage}%)`;
+                                    return `${currentValue} (${percentage}%)`;
                                 }
                                 else {
                                     const total = yMax;
                                     const percentage = ((currentValue / total) * 100).toFixed(2);
-                                    return `${currentValue.toFixed(2)} (${percentage}%)`;
+                                    return `${currentValue} (${percentage}%)`;
                                 }
 
                             }
