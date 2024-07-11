@@ -803,6 +803,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     ###########################
     if "hardeningTechniquesPerCategory" in statistics_to_show:
         categories = apps["android_category"].drop_duplicates().sort_values().tolist()
+        categories.append("Other")
         
         statistics["hardeningTechniquesPerCategory"] = {
             "title": "Average number of hardening techniques per category",
@@ -834,19 +835,29 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         # Perform the left join with android_results
         merged_android = pd.merge(merged_ios, android_results, how='left', left_on='android_id', right_on='app_id')
         merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
+        
+        
 
         # Group by android_category and compute the average values
         query_results = (merged_android.groupby('android_category')
-                .agg(detected_ios=('detected_ios', 'mean'), detected_android=('detected_android', 'mean'))
-                .reset_index()).fillna(0)
+                        .agg(detected_ios=('detected_ios', 'mean'), detected_android=('detected_android', 'mean'))
+                        .reset_index()).fillna(0)
 
+        # Check if the number of apps per category is less than 50
+        small_categories = query_results[query_results['android_category'].map(merged_android['android_category'].value_counts()) < len(apps) * 0.015]
+
+        # Group small categories as "other"
+        query_results.loc[query_results['android_category'].isin(small_categories['android_category']), 'android_category'] = 'Other'
+        
+        for category in small_categories['android_category']:
+            categories.remove(category)
 
         for _, result in query_results.iterrows():
             for os in ["android", "ios"]:
                 statistics["hardeningTechniquesPerCategory"]["values"][os][
+
                     categories.index(result["android_category"])
                 ] = result[f"detected_{os}"]
-
         # Sort labels, android values and ios values by descending order of the android values
         (
             statistics["hardeningTechniquesPerCategory"]["labels"],

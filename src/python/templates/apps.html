@@ -199,12 +199,12 @@
                                 if (yMax == null) {
                                     const total = data.reduce((acc, val) => acc + val, 0);
                                     const percentage = ((currentValue / total) * 100).toFixed(2);
-                                    return `${currentValue} (${percentage}%)`;
+                                    return `${currentValue.toFixed(2)} (${percentage}%)`.replace(/[.,]00/, "");
                                 }
                                 else {
                                     const total = yMax;
                                     const percentage = ((currentValue / total) * 100).toFixed(2);
-                                    return `${currentValue} (${percentage}%)`;
+                                    return `${currentValue.toFixed(2)} (${percentage}%)`.replace(/[.,]00/, "");
                                 }
 
                             }
@@ -242,6 +242,26 @@
                 key_index += "?";
             }
             return osColors[key_index];
+        }
+
+        function getColorForCategories(labels, isAndroid) {
+            var colors = [];
+            for (var i = 0; i < labels.length; i++) {
+                if (labels[i] !== 'Other') {
+                    if (isAndroid) {
+                        colors.push('#3DDC84');
+                    } else {
+                        colors.push('#666666');
+                    }
+                } else {
+                    if (isAndroid) {
+                        colors.push('#97deb7');
+                    } else {
+                        colors.push('#999999');
+                    }
+                }
+            }
+            return colors;
         }
 
         {% if 'hardeningTechniques' in statistics %}
@@ -360,14 +380,14 @@
                     {
                         label: 'Android',
                         data: {{ statistics['hardeningTechniquesPerCategory']['values']['android'] | tojson }},
-                        backgroundColor: '#3DDC84',
-                        hoverBackgroundColor: '#3DDC84'
+                        backgroundColor: getColorForCategories({{ statistics['hardeningTechniquesPerCategory']['labels'] | tojson }}, true),
+                        // hoverBackgroundColor: '#3DDC84'
                     },
                     {
                         label: 'iOS',
                         data: {{ statistics['hardeningTechniquesPerCategory']['values']['ios'] | tojson }},
-                        backgroundColor: '#666666',
-                        hoverBackgroundColor: '#666666',
+                        backgroundColor: getColorForCategories({{ statistics['hardeningTechniquesPerCategory']['labels'] | tojson }}, false),
+                        // hoverBackgroundColor: '#666666',
                     }
                 ]
             },
