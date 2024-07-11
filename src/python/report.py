@@ -10,6 +10,7 @@ import pandas as pd
 from tqdm import tqdm
 from pandasql import sqldf as psql
 from flask_caching import Cache
+import re
 
 flask_app = Flask(__name__)
 flask_app.config.from_object(__name__)
@@ -151,7 +152,6 @@ def _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_i
                 detection_result["os"] = app_os
                 detection_result["app_id"] = app_id
                 detection_result["other_app_id"] = other_app_id
-                # DONE Add device for dynmaic?
                 detection_result["device"] = device["name"] if device is not None else ""
                 detection_result["analysis_type"] = analysis_type
                 detection_result["detector"] = detector
@@ -190,6 +190,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
     app_counts = {
         "totalApps": 0,  # Number of apps in config to be analyzed
         "totalIosStatic": 0,  # Number of apps statically analyzed on iOS
+        "totalAndroidDynamic": 0,  # Number of apps dynamically analyzed on Android
         "totalIosDynamic": 0,  # Number of apps dynamically analyzed on iOS TODO remove this too
         "totalAndroidStatic": 0,  # Number of apps statically analyzed on Android
         "totalAnalyzed": 0,  # Number of apps that are statically analyzed on iOS and Android (might have failed dynamic analysis)
@@ -242,6 +243,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                     
                     # DONE make this a for loop of all devices
                     if analysis_type == "dynamic":
+                        counted = False
                         for device in Config().devices:
                             json_file = join(
                                 result_path(app_os), package_id, f"{analysis_type}_{device['name']}.json"
@@ -253,6 +255,11 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                                 if key not in app_counts:
                                     app_counts[key] = 0
                                 app_counts[key] += 1
+                                if not counted:
+                                    app_counts[
+                                        f"total{app_os.capitalize()}{analysis_type.capitalize()}"
+                                    ] += 1
+                                    counted = True
                     else:
                         json_file = join(
                             result_path(app_os), package_id, f"{analysis_type}.json"
@@ -575,16 +582,14 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             "values": {
                 "androidStatic": [0] * n_techs,
                 "androidStatic?": [0] * n_techs,
-                "iosStatic": [0] * n_techs,
-                "iosStatic?": [0] * n_techs,
-                "iosDynamic": [0] * n_techs,
-                "iosDynamic?": [0] * n_techs,
             },
         }
         for device in Config().devices:
             statistics["hardeningTechniques"]["values"][f"androidDynamic_{device['name'].capitalize()}"] = [0] * n_techs
             statistics["hardeningTechniques"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = [0] * n_techs
-            
+        for ios_type in ["iosStatic", "iosStatic?", "iosDynamic", "iosDynamic?"]:
+            statistics["hardeningTechniques"]["values"][ios_type] = [0] * n_techs
+
         apps_results_grouped = app_results.groupby(["detector", "analysis_type", "os", "app_id", "device"])
         apps_results_grouped_confidence = apps_results_grouped['confident'].sum().reset_index()
         apps_results_grouped_confidence['confident'] = apps_results_grouped_confidence['confident'].apply(lambda x: 1 if x > 0 else 0)
@@ -1310,23 +1315,22 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             "labels": list(hooking_frameworks.keys()),
             "values": {
                 "androidStatic": [],
-                "iosStatic": [],
-                "iosDynamic": [],
             },
         }
         for device in Config().devices:
             statistics["hookingFrameworks"]["values"][f"androidDynamic_{device['name'].capitalize()}"] = []
-            statistics["hookingFrameworks"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = []
+            # statistics["hookingFrameworks"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = []
+        statistics["hookingFrameworks"]["values"]["iosStatic"] = []
+        statistics["hookingFrameworks"]["values"]["iosDynamic"] = []
 
         for _, framework_keywords in hooking_frameworks.items():
             number_of_apps = {
                 "androidStatic": 0,
-                "iosStatic": 0,
-                "iosDynamic": 0,
             }
             for device in Config().devices:
                 number_of_apps[f"androidDynamic_{device['name'].capitalize()}"] = 0
-
+            number_of_apps["iosStatic"] = 0
+            number_of_apps["iosDynamic"] = 0
             last_app_id = None
             last_app_os = None
             last_analysis_type = None
@@ -1639,7 +1643,7 @@ def apps():
         apps = cache.get("apps_cache")
         statistics = cache.get("stats_cache")
 
-    return render_template("apps.html", apps=apps, statistics=statistics)
+    return render_template("apps.html", apps=apps, statistics=statistics, re=re)
 
 
 @flask_app.route("/apps/<path_app_id>")
@@ -1711,11 +1715,24 @@ def categories():
             if app["android_category"] not in categories:
                 categories[app["android_category"]] = []
             categories[app["android_category"]].append(app)
+    
     # sort categories with most apps
     categories = dict(sorted(categories.items(), key=lambda item: len(item[1]), reverse=True))
-    return render_template("categories.html", categories=categories)
     
+    categories["Other"] = []
+    threshold = len(app_data) * 0.015
+    to_remove = []
+    # check if any category has less than 20 apps
+    for category, apps in categories.items():
 
+        if len(apps) < threshold:
+            # create a new category called "other" and move the apps to it
+            categories["other"] = categories.get("other", []) + apps
+            to_remove.append(category)
+    for category in to_remove:
+        categories.pop(category)
+
+    return render_template("categories.html", categories=categories)
 def run():
     flask_app.run(debug=True, host="0.0.0.0", port=Config().flask_port)
 
