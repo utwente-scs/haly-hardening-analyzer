@@ -8,6 +8,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js" integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.js" integrity="sha512-CMF3tQtjOoOJoOKlsS7/2loJlkyctwzSoDK/S40iAB+MqWSaf50uObGQSk5Ny/gfRhRCjNLvoxuCvdnERU4WGg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/patternomaly/1.3.2/patternomaly.js" integrity="sha512-gNM40ajr/bSi3Af8i6D4dV2CUWZrkm2zhgeWf46H91zOwWoH8Wwsyf6kQ4syfNyOrnjATrjKkP4ybWD7eKp2KA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-autocolors"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
     <title>Apps</title>
     <style>
         table {
@@ -31,12 +34,13 @@
 
         <div class="mb-4">
             <b>Total number of apps in dataset: </b> {{ statistics['totalApps'] }}<br>
-            {% for key, value in statistics.items() if 'total' in key and 'Android' in key %}
+            {% for key, value in statistics.items() if 'total' in key and 'Android' in key and not "APKiD" in key %}
             <b>Total number of {{ re.findall('[A-Z][^A-Z]*', key)[1].lower() }}ally analyzed apps{% if re.findall('[A-Z][^A-Z]*', key)|length > 2 %} ({{ re.findall('[A-Z][^A-Z]*', key)[2] }}){% endif %}:</b> {{ value }}<br>
             {% endfor %}
             <b>Total number of statically analyzed iOS apps:</b> {{ statistics['totalIosStatic'] }}<br>
             <b>Total number of dynamically analyzed iOS apps:</b> {{ statistics['totalIosDynamic'] }}<br>
             <b>Total number of statically analyzed apps on iOS and Android:</b> {{ statistics['totalAnalyzed'] }}<br>
+            <b>Total number of APKiD analyzed apps</b> {{ statistics['totalAndroidAPKiD'] }}<br>
         </div>
 
         {% if 'hardeningTechniques' in statistics %}
@@ -99,6 +103,10 @@
             <h2>{{ statistics['hardeningTechniquesLibrariesNoCommon']['title'] }}</h2>
             <canvas id="hardeningTechniquesLibrariesNoCommon"></canvas>
         {% endif %}
+        {% if 'packerPerCategory' in statistics %}
+            <h2>{{ statistics['packerPerCategory']['title'] }}</h2>
+            <canvas id="packerPerCategory"></canvas>
+        {% endif %}
         {% if 'libraries' in statistics %}
             <h2>Detections in libraries</h2>
             {% for os in statistics['libraries'].keys() %}
@@ -153,8 +161,11 @@
 
     <script>
         Chart.defaults.font.family = "Times";
+        const autocolors = window['chartjs-plugin-autocolors'];
+        Chart.register(autocolors);
+        Chart.register(ChartDataLabels);
 
-        function getOptions(stack=false, yMax={{ statistics['totalAnalyzed'] }}) {
+        function getOptions(stack=false, yMax={{ statistics['totalAnalyzed'] }}, autocolors_enabled=false) {
             return {
                 interaction: {
                     mode: 'x',
@@ -167,10 +178,30 @@
                     },
                     y: {
                         beginAtZero: true,
-                        suggestedMax: yMax
+                        suggestedMax: yMax,
+                        stacked: stack,
                     }
                 },
                 plugins: {
+                    autocolors: {
+                        enabled: autocolors_enabled,
+                    },
+                    datalabels: {
+                        anchor: stack ? 'center' : 'end',
+                        align: 'center',
+                        color: 'black',
+                        font: {
+                            weight: 'bold',
+                        },
+                        formatter: function (value, context) {
+                            // Display the actual data value
+                            if (stack && value < 0.8) {
+                                return '';
+                            }
+
+                            return value.toFixed(2).replace(/[.,]00/, "");
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             footer: function(tooltipItems) {
@@ -626,6 +657,26 @@
             options: getOptions(false)
         });
         {% endif %}
+        {% if 'packerPerCategory' in statistics %}
+        new Chart(document.getElementById('packerPerCategory'), {
+            type: 'bar',
+            data: {
+                labels: {{ statistics['packerPerCategory']['labels'] | tojson }},
+                datasets: [
+                    {% for packer in statistics['packerPerCategory']['values'].keys() %}
+                        {% if packer != 'None' %}
+                    {
+                        label: '{{ packer }}',
+                        data: {{ statistics['packerPerCategory']['values'][packer] | tojson }},
+                    },
+                        {% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: getOptions(true, 20, true)
+        });
+        {% endif %}
+
     </script>
 </body>
 </html>
