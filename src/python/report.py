@@ -11,6 +11,8 @@ from tqdm import tqdm
 from pandasql import sqldf as psql
 from flask_caching import Cache
 import re
+import concurrent.futures
+import os
 
 flask_app = Flask(__name__)
 flask_app.config.from_object(__name__)
@@ -124,12 +126,15 @@ def get_library(result: dict) -> str:
 
     return None
 
-def _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_id, analysis_type, device=None):
+def _parse_result(json_file, app_os, app_id, other_app_id, analysis_type, device=None):
     if not exists(json_file):
-        return
+        return None, None
 
     with open(json_file, "r") as f:
         result = json.load(f)
+        
+    app_infos = []
+    app_results = []
 
     for detector in result.keys():
         if detector == "info":
@@ -152,7 +157,7 @@ def _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_i
                 detection_result["os"] = app_os
                 detection_result["app_id"] = app_id
                 detection_result["other_app_id"] = other_app_id
-                detection_result["device"] = device["name"] if device is not None else ""
+                detection_result["device"] = device["name"] if device is not None else f"{analysis_type}_{app_os}"
                 detection_result["analysis_type"] = analysis_type
                 detection_result["detector"] = detector
                 detection_result["library"] = get_library(detection_result)
@@ -177,10 +182,11 @@ def _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_i
                         detection_result = detection_result.copy()
                         detection_result["detector"] = detector
                         app_results.append(detection_result)
+    return app_infos, app_results
 
-def _parse_apkid_results(json_file, app_apkid_results, app_id):
+def _parse_apkid_results(json_file, app_id):
     if not exists(json_file):
-        return
+        return None
     results = {
         "app_id": app_id,
         "anti_vm": 0,
@@ -206,7 +212,131 @@ def _parse_apkid_results(json_file, app_apkid_results, app_id):
                                     results[key][m] = 1
                                 else:
                                     results[key][m] += 1
-        app_apkid_results.append(results)    
+        # app_apkid_results.append(results)
+        return results   
+    
+def _process_app(app, android_to_app):
+    app_infos = []
+    app_results = []
+    app_counts = {
+        "totalApps": 0,  # Number of apps in config to be analyzed
+        "totalIosStatic": 0,  # Number of apps statically analyzed on iOS
+        "totalAndroidDynamic": 0,  # Number of apps dynamically analyzed on Android
+        "totalIosDynamic": 0,  # Number of apps dynamically analyzed on iOS TODO remove this too
+        "totalAndroidStatic": 0,  # Number of apps statically analyzed on Android
+        "totalAndroidAPKiD": 0,  # Number of apps analyzed with APKiD on Android
+        "totalAnalyzed": 0,  # Number of apps that are statically analyzed on iOS and Android (might have failed dynamic analysis)
+    }
+    app_apkid_results = []
+    
+    # Check if analysis of app is completed
+    analysis_completed = True
+    try:
+        for app_os in ["ios", "android"]:
+            for analysis_type in ["static", "dynamic", "apkid"]:
+                package_id = (
+                        android_to_app[app.package_id]["ios_bundle_id"]
+                    if app_os == "ios"
+                    else app.package_id
+                )
+                
+                # DONE make this a for loop of all devices
+                if analysis_type == "dynamic" and app_os == "android":
+                    counted = False
+                    for device in Config().devices:
+                        json_file = join(
+                            result_path(app_os), package_id, f"{analysis_type}_{device['name']}.json"
+                        )
+                        
+                        if exists(json_file):
+                            # DONE change to device total too totalAndroidDynamic<Device>
+                            key = f"total{app_os.capitalize()}{analysis_type.capitalize()}{device['name'].capitalize()}"
+                            if key not in app_counts:
+                                app_counts[key] = 0
+                            app_counts[key] += 1
+                            if not counted:
+                                app_counts[
+                                    f"total{app_os.capitalize()}{analysis_type.capitalize()}"
+                                ] += 1
+                                counted = True
+                elif analysis_type == "apkid" and app_os == "android":
+                    json_file = join(
+                        result_path(app_os), package_id, f"{analysis_type}_results.json"
+                    )
+
+                    if exists(json_file):
+                        app_counts[
+                            f"total{app_os.capitalize()}APKiD"
+                        ] += 1
+                else:
+                    json_file = join(
+                        result_path(app_os), package_id, f"{analysis_type}.json"
+                    )
+
+                    if exists(json_file):
+                        app_counts[
+                            f"total{app_os.capitalize()}{analysis_type.capitalize()}"
+                        ] += 1
+    except KeyError:
+        print(f"KeyError {app.package_id}")
+        analysis_completed = False
+        return app_infos, app_results, app_counts, app_apkid_results, analysis_completed
+    if not analysis_completed:
+        print(f"Analysis not completed for {app.package_id}")
+        return app_infos, app_results, app_counts, app_apkid_results, analysis_completed
+
+    app_counts["totalAnalyzed"] += 1
+    # apps.append(android_to_app[app.package_id])
+
+
+
+    # Process app results
+    for app_os in ["ios", "android"]:
+        for analysis_type in ["static", "dynamic", "apkid"]:
+            app_id = (
+                android_to_app[app.package_id]["ios_bundle_id"]
+                if app_os == "ios"
+                else app.package_id
+            )
+            other_app_id = (
+                app.package_id
+                if app_os == "ios"
+                else android_to_app[app.package_id]["ios_bundle_id"]
+            )
+            
+            # DONE make this a for loop of all devices
+            if analysis_type == "dynamic" and app_os == "android":
+                for device in Config().devices:
+                    json_file = join(
+                        result_path(app_os), app_id, f"{analysis_type}_{device['name']}.json"
+                    )
+                    # futures[executor.submit(_parse_result, json_file, app_os, app_id, other_app_id, analysis_type, device)] = json_file
+                    (parsed_app_infos, parsed_app_results) = _parse_result(json_file, app_os, app_id, other_app_id, analysis_type, device)
+                    if parsed_app_infos is not None:
+                        app_infos.extend(parsed_app_infos)
+                    if parsed_app_results is not None:
+                        app_results.extend(parsed_app_results)
+            elif analysis_type == "apkid":
+                json_file = join(
+                    result_path(app_os), app_id, f"{analysis_type}_results.json"
+                )
+                # futures[executor.submit(_parse_apkid_results, json_file, app_id)] = json_file
+                parsed_apkid_parsing_results = _parse_apkid_results(json_file, app_id)
+                if parsed_apkid_parsing_results is not None:
+                    app_apkid_results.append(parsed_apkid_parsing_results)
+            else:
+                json_file = join(
+                    result_path(app_os), app_id, f"{analysis_type}.json"
+                )
+                # futures[executor.submit(_parse_result, json_file, app_os, app_id, other_app_id, analysis_type)] = json_file
+                (parsed_app_infos, parsed_app_results) = _parse_result(json_file, app_os, app_id, other_app_id, analysis_type)
+                if parsed_app_infos is not None:
+                    app_infos.extend(parsed_app_infos)
+                if parsed_app_results is not None:
+                    app_results.extend(parsed_app_results)
+    # print(f"Processed {app.package_id}")
+    return app_infos, app_results, app_counts, app_apkid_results, analysis_completed
+ 
 def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
     """
     Get the results of the analysis of all apps
@@ -232,7 +362,8 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
             "Checking for cached results, use --force to force re-calculating all results"
         )
         cached_data = {}
-        for file in ["apps", "app_infos", "app_results", "app_counts", "app_apkid_results"]:
+        files = ["apps", "app_infos", "app_results", "app_counts", "app_apkid_results"]
+        for file in files:
             # DONE make this a generic result path. This one is the cached results
             if exists(result_path(f"{file}.csv")):
                 data = pd.read_csv(
@@ -243,7 +374,9 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                 if file == "app_counts":
                     data = dict(zip(data["key"], data["value"]))
                 if file == "app_results":
-                    data["confident"] = data["confident"].astype(bool)
+                    data["confident"] = data["confident"].apply(
+                        lambda x: True if x == "True" else False
+                    ).fillna(False)
                 if file == "app_apkid_results":
                     data["packer"] = data["packer"].apply(
                         lambda x: json.loads(x.replace("'", '"')) if x != {} else {}
@@ -260,7 +393,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
 
                 cached_data[file] = data
 
-        if len(cached_data) == 5:
+        if len(cached_data) == len(files):
             print("Using cached results")
             return (
                 cached_data["apps"],
@@ -271,100 +404,62 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
             )
 
     android_to_app = {app["android_id"]: app for app in _get_apps()}
-    print("Parsing app results...")
-    for app in tqdm([app for app in Config().apps if app.os == "android"]):
-        app_counts["totalApps"] += 1
+    apps_to_process = [app for app in Config().apps if app.os == "android"]
+    # for app in tqdm([app for app in Config().apps if app.os == "android"]):
+    futures = {}
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for app in apps_to_process:
+            app_counts["totalApps"] += 1
+            futures[executor.submit(_process_app, app, android_to_app)] = app
+            
+        print("Parsing app results...")
+        progress = tqdm(total=len(apps_to_process))
 
-        # Check if analysis of app is completed
-        analysis_completed = True
-        try:
-            for app_os in ["ios", "android"]:
-                for analysis_type in ["static", "dynamic", "apkid"]:
-                    package_id = (
-                            android_to_app[app.package_id]["ios_bundle_id"]
-                        if app_os == "ios"
-                        else app.package_id
-                    )
-                    
-                    # DONE make this a for loop of all devices
-                    if analysis_type == "dynamic":
-                        counted = False
-                        for device in Config().devices:
-                            json_file = join(
-                                result_path(app_os), package_id, f"{analysis_type}_{device['name']}.json"
-                            )
-                            
-                            if exists(json_file):
-                                # DONE change to device total too totalAndroidDynamic<Device>
-                                key = f"total{app_os.capitalize()}{analysis_type.capitalize()}{device['name'].capitalize()}"
-                                if key not in app_counts:
-                                    app_counts[key] = 0
-                                app_counts[key] += 1
-                                if not counted:
-                                    app_counts[
-                                        f"total{app_os.capitalize()}{analysis_type.capitalize()}"
-                                    ] += 1
-                                    counted = True
-                    elif analysis_type == "static":
-                        json_file = join(
-                            result_path(app_os), package_id, f"{analysis_type}.json"
-                        )
-
-                        if exists(json_file):
-                            app_counts[
-                                f"total{app_os.capitalize()}{analysis_type.capitalize()}"
-                            ] += 1
-                    elif analysis_type == "apkid" and app_os == "android":
-                        json_file = join(
-                            result_path(app_os), package_id, f"{analysis_type}_results.json"
-                        )
-
-                        if exists(json_file):
-                            app_counts[
-                                f"total{app_os.capitalize()}APKiD"
-                            ] += 1
-        except KeyError:
-            print(f"KeyError {app.package_id}")
-            analysis_completed = False
-            continue
-        if not analysis_completed:
-            continue
-
-        app_counts["totalAnalyzed"] += 1
-        apps.append(android_to_app[app.package_id])
-
-        # Process app results
-        for app_os in ["ios", "android"]:
-            for analysis_type in ["static", "dynamic", "apkid"]:
-                app_id = (
-                    android_to_app[app.package_id]["ios_bundle_id"]
-                    if app_os == "ios"
-                    else app.package_id
-                )
-                other_app_id = (
-                    app.package_id
-                    if app_os == "ios"
-                    else android_to_app[app.package_id]["ios_bundle_id"]
-                )
-                
-                # DONE make this a for loop of all devices
-                if analysis_type == "dynamic":
-                    for device in Config().devices:
-                        json_file = join(
-                            result_path(app_os), app_id, f"{analysis_type}_{device['name']}.json"
-                        )
-                        _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_id, analysis_type, device)
-                elif analysis_type == "static":
-                    json_file = join(
-                        result_path(app_os), app_id, f"{analysis_type}.json"
-                    )
-                    _parse_result(json_file, app_infos, app_results, app_os, app_id, other_app_id, analysis_type)
-                elif analysis_type == "apkid":
-                    json_file = join(
-                        result_path(app_os), app_id, f"{analysis_type}_results.json"
-                    )
-                    _parse_apkid_results(json_file, app_apkid_results, app_id)
-
+        for future in concurrent.futures.as_completed(futures):
+        # while True:
+        #     if len(futures) == 0:
+        #         break
+        #     done, _ = concurrent.futures.wait(futures.keys(), timeout=20) 
+            # print(f"Done: {len(done)}")
+            # for future in done:
+            app = futures.pop(future)
+            # print(f"Thread for {app.package_id} finished")
+            try:
+                results = future.result()
+                if results is None:
+                    print(f"Error processing {app.package_id}")
+                # else:
+                    # print(f"Processed {app.package_id}: {results}")
+                (app_infos_r, app_results_r, app_counts_r, app_apkid_results_r, analysis_completed_r) = results
+                if analysis_completed_r:
+                    if app_infos_r is not None:
+                        app_infos.extend(app_infos_r)
+                    if app_results_r is not None:
+                        app_results.extend(app_results_r)
+                    if app_apkid_results_r is not None:
+                        app_apkid_results.extend(app_apkid_results_r)
+                    if app_counts_r is not None:
+                        for key, value in app_counts_r.items():
+                            if key not in app_counts:
+                                app_counts[key] = value
+                            else:
+                                app_counts[key] += value
+                    apps.append(android_to_app[app.package_id])
+            except Exception as e:
+                print(f"Error processing {app.package_id}: {e}")
+            
+            progress.n += 1
+            progress.refresh()
+                # futures.pop(future)
+            
+            # if len(results) == 2:
+            #     app_infos.extend(results[0])
+            #     app_results.extend(results[1])
+            # else:
+            #     app_apkid_results.extend(results)
+        print("Finished parsing app results")
+            
+            
     # Sort by Android app name
     apps = sorted(apps, key=lambda app: app["android_id"])
 
@@ -374,6 +469,9 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
     app_infos = pd.DataFrame(app_infos)
     app_results = pd.DataFrame(app_results)
     app_apkid_results = pd.DataFrame(app_apkid_results)
+    
+    ios_results = app_results[app_results["os"] == "ios"]
+    print(f"ios results: {ios_results}")
 
     for file in ["apps", "app_infos", "app_results", "app_counts", "app_apkid_results"]:
         data = locals()[file]
@@ -577,11 +675,11 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     :return: List of analyzed apps and a dictionary containing the statistics
     """
     statistics_to_show = [
-        # "hardeningTechniques",
-        # "hardeningTechniquesApps",
+        "hardeningTechniques",
+        "hardeningTechniquesApps",
         # # "hardeningTechniquesConsistency",
         # # "hardeningTechniquesDelta",
-        # "hardeningTechniquesPerCategory",
+        "hardeningTechniquesPerCategory",
         # "hardeningTechniquesPerPermission",
         # "hardeningTechniquesPerPermissionCount",
         # # "permissionsDiff",
@@ -657,18 +755,17 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             statistics["hardeningTechniques"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = [0] * n_techs
         for ios_type in ["iosStatic", "iosStatic?", "iosDynamic", "iosDynamic?"]:
             statistics["hardeningTechniques"]["values"][ios_type] = [0] * n_techs
-
         apps_results_grouped = app_results.groupby(["detector", "analysis_type", "os", "app_id", "device"])
         apps_results_grouped_confidence = apps_results_grouped['confident'].sum().reset_index()
         apps_results_grouped_confidence['confident'] = apps_results_grouped_confidence['confident'].apply(lambda x: 1 if x > 0 else 0)
-        
+                
         technique_counts = apps_results_grouped_confidence.groupby(['detector', 'analysis_type', 'os', 'confident',"device"])['app_id'].nunique().reset_index()
         technique_counts.rename(columns={'app_id': 'count'}, inplace=True)
-        
+                
         for _, result in technique_counts.iterrows():
             if result["detector"] in hardening_techniques:
                 key = f'{result["os"]}{result["analysis_type"].capitalize()}'
-                if result["analysis_type"] == "dynamic":
+                if result["analysis_type"] == "dynamic" and result["os"] == "android":
                     key += f'_{result["device"].capitalize()}'
                 if result["confident"] == 0:
                     key += "?"
@@ -916,6 +1013,10 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
 
         # Group small categories as "other"
         query_results.loc[query_results['android_category'].isin(small_categories['android_category']), 'android_category'] = 'Other'
+        query_results = query_results.groupby('android_category').agg({
+            'detected_ios': 'mean',
+            'detected_android': 'mean'
+        }).reset_index()
         
         for category in small_categories['android_category']:
             categories.remove(category)
@@ -1047,10 +1148,10 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         query_results.fillna(0, inplace=True)
         
         for _, result in query_results.iterrows():
-            print(list(permissions.keys()).index(result["permission_name"]))
-            print(result)
-            print(result["techniques_detected"])
-            print(statistics["hardeningTechniquesPerPermission"]["values"])
+            # print(list(permissions.keys()).index(result["permission_name"]))
+            # print(result)
+            # print(result["techniques_detected"])
+            # print(statistics["hardeningTechniquesPerPermission"]["values"])
             statistics["hardeningTechniquesPerPermission"]["values"][result["os"]][
                 list(permissions.keys()).index(result["permission_name"])
             ] = result["techniques_detected"]
@@ -1710,7 +1811,6 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     if "packerPerCategory" in statistics_to_show:
         categories = apps["android_category"].drop_duplicates().sort_values().tolist()
         categories.append("Other")
-        print(app_apkid_results)
 
         packers = app_apkid_results["packer"].drop_duplicates().tolist()
         packer_set = set()
@@ -1861,12 +1961,12 @@ def categories():
     to_remove = []
     # check if any category has less than 20 apps
     for category, apps in categories.items():
-
         if len(apps) < threshold:
             # create a new category called "other" and move the apps to it
-            categories["other"] = categories.get("other", []) + apps
+            categories["Other"] = categories.get("Other", []) + apps
             to_remove.append(category)
     for category in to_remove:
+        
         categories.pop(category)
 
     return render_template("categories.html", categories=categories)

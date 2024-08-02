@@ -188,7 +188,7 @@
                     },
                     datalabels: {
                         anchor: stack ? 'center' : 'end',
-                        align: 'center',
+                        align: stack ? 'center' : 'end',
                         color: 'black',
                         font: {
                             weight: 'bold',
@@ -199,7 +199,11 @@
                                 return '';
                             }
 
-                            return value.toFixed(2).replace(/[.,]00/, "");
+                            if (typeof value === 'number') {
+                                return value.toFixed(2).replace(/[.,]00/, "");
+                            }
+
+                            return '';
                         }
                     },
                     tooltip: {
@@ -255,6 +259,32 @@
             }
         }
 
+        var device_i = 0;
+        
+        const patterns = [
+            'diagonal',
+            'cross',
+            'dot',
+            'triangle',
+            'diagonal-right-left',
+            'diamond',
+            'plus',
+            'dash',
+            'cross-dash',
+            'dot-dash',
+            'disc',
+            'ring',
+            'line',
+            'line-vertical',
+            'weave',
+            'zigzag',
+            'zigzag-vertical',
+            'square',
+            'box',
+            'triangle-inverted',
+            'diamond-box'
+        ];
+
         const osColors = {
             'android': '#3DDC84',
             'android?': '#97deb7',
@@ -264,13 +294,22 @@
 
         function getColorFromKey(key) {
             var key_index = "";
+            
+            if (key.includes("Static")) {
+                device_i = 0;
+            }
+
             if (key.includes("android")) {
                 key_index = "android";
             } else if (key.includes("ios")) {
                 key_index = "ios";
             }
+
             if (key.includes("?")) {
                 key_index += "?";
+                if (key.includes("Dynamic")) {
+                    device_i++;
+                }
             }
             return osColors[key_index];
         }
@@ -295,6 +334,8 @@
             return colors;
         }
 
+
+
         {% if 'hardeningTechniques' in statistics %}
         new Chart(document.getElementById('hardeningTechniques'), {
             type: 'bar',
@@ -305,7 +346,7 @@
                     {
                         label: '{{ key.replace("android", "Android ").replace("ios", "iOS ").replace("Dynamic_", "Dynamic ").replace('?', '(uncertain)') }}',
                         data: {{ value | tojson }},
-                        backgroundColor: {% if "Dynamic" in key %} pattern.draw('diagonal', getColorFromKey('{{ key }}')) {% else %} getColorFromKey('{{ key }}') {% endif %},
+                        backgroundColor: {% if "Dynamic" in key %} pattern.draw(patterns[device_i], getColorFromKey('{{ key }}')) {% else %} getColorFromKey('{{ key }}') {% endif %},
                         stack: '{{ key.replace('?', '')}}'
                     },
                     {% endfor %}
