@@ -470,8 +470,8 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
     app_results = pd.DataFrame(app_results)
     app_apkid_results = pd.DataFrame(app_apkid_results)
     
-    ios_results = app_results[app_results["os"] == "ios"]
-    print(f"ios results: {ios_results}")
+    # ios_results = app_results[app_results["os"] == "ios"]
+    # print(f"ios results: {ios_results}")
 
     for file in ["apps", "app_infos", "app_results", "app_counts", "app_apkid_results"]:
         data = locals()[file]
@@ -677,26 +677,26 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     statistics_to_show = [
         "hardeningTechniques",
         "hardeningTechniquesApps",
-        # # "hardeningTechniquesConsistency",
-        # # "hardeningTechniquesDelta",
+        "hardeningTechniquesConsistency",
+        "hardeningTechniquesDelta",
         "hardeningTechniquesPerCategory",
-        # "hardeningTechniquesPerPermission",
-        # "hardeningTechniquesPerPermissionCount",
-        # # "permissionsDiff",
-        # "jailbreaks",
-        # "hookingFrameworks",
-        # "plaintextTraffic",
-        # "plaintextTrafficType",
-        # "tlsCipher",
-        # "hardeningTechniquesLibraries",
-        # "hardeningTechniquesLibrariesNoCommon",
-        # "libraries",
-        # "packer",
+        "hardeningTechniquesPerPermission",
+        "hardeningTechniquesPerPermissionCount",
+        "permissionsDiff",
+        "jailbreaks",
+        "hookingFrameworks",
+        "plaintextTraffic",
+        "plaintextTrafficType",
+        "tlsCipher",
+        "hardeningTechniquesLibraries",
+        "hardeningTechniquesLibrariesNoCommon",
+        "libraries",
+        "packerTechniques",
         "packerPerCategory",
-        # "obfuscator",
-        # "obfuscatorPerCategory",
-        # "protector",
-        # "protectorPerCategory",
+        "obfuscatorTechniques",
+        "obfuscatorPerCategory",
+        "protectorTechniques",
+        "protectorPerCategory",
     ]
 
     hardening_techniques = {
@@ -1125,12 +1125,12 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
 
             if len(permission_keys) > 0:
                 for key in permission_keys:
-                    if key in row['permissions']:
+                    if type(row['permissions']) != float and key in row['permissions']:
                         return 1
                 return 0
             else:
                 for key in all_permissions:
-                    if key not in row['permissions']:
+                    if type(row['permissions']) != float and key not in row['permissions']:
                         return 1
                 return 0
 
@@ -1266,12 +1266,12 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
 
             if len(permission_keys) > 0:
                 for key in permission_keys:
-                    if key in row['permissions']:
+                    if type(row['permissions']) != float and key in row['permissions']:
                         return 1
                 return 0
             else:
                 for key in all_permissions:
-                    if key not in row['permissions']:
+                    if type(row['permissions']) != float and key not in row['permissions']:
                         return 1
             return 0
         
@@ -1303,113 +1303,73 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     #########################################
     # Difference in permissions across OSes #
     #########################################
-    if "permissionsDiff" in statistics_to_show:
+    if 'permissionsDiff' in statistics_to_show:
         permissions = {
-            "Calendar": [
-                "android.permission.READ_CALENDAR",
-                "android.permission.WRITE_CALENDAR",
-                "NSCalendarsUsageDescription",
-                "NSRemindersUsageDescription",
-            ],
-            "Camera": ["android.permission.CAMERA", "NSCameraUsageDescription"],
-            "Contacts": [
-                "android.permission.READ_CONTACTS",
-                "android.permission.WRITE_CONTACTS",
-                "NSContactsUsageDescription",
-            ],
-            "Location": [
-                "android.permission.ACCESS_COARSE_LOCATION",
-                "android.permission.ACCESS_FINE_LOCATION",
-                "android.permission.ACCESS_BACKGROUND_LOCATION",
-                "android.permission.ACCESS_MEDIA_LOCATION",
-                "NSLocationAlwaysAndWhenInUseUsageDescription",
-                "NSLocationUsageDescription",
-                "NSLocationWhenInUseUsageDescription",
-                "NSLocationTemporaryUsageDescriptionDictionary",
-                "NSLocationAlwaysUsageDescription",
-                "NSWidgetWantsLocation",
-                "NSLocationDefaultAccuracyReduced",
-            ],
-            "Microphone": [
-                "android.permission.RECORD_AUDIO",
-                "NSMicrophoneUsageDescription",
-            ],
-            "Health sensors": [
-                "android.permission.BODY_SENSORS",
-                "android.permission.ACTIVITY_RECOGNITION",
-                "NSHealthUpdateUsageDescription",
-                "NSHealthShareUsageDescription",
-                "NSHealthClinicalHealthRecordsShareUsageDescription",
-                "NSHealthRequiredReadAuthorizationTypeIdentifiers",
-            ],
-            "Storage": [
-                "android.permission.READ_EXTERNAL_STORAGE",
-                "android.permission.WRITE_EXTERNAL_STORAGE",
-                "android.permission.MANAGE_EXTERNAL_STORAGE",
-                "NSPhotoLibraryAddUsageDescription",
-                "NSPhotoLibraryUsageDescription",
-                "NSAppleMusicUsageDescription",
-            ],
-            "HomeKit": ["NSHomeKitUsageDescription"],
-            "None": [],
+            'Calendar': ['android.permission.READ_CALENDAR', 'android.permission.WRITE_CALENDAR', 'NSCalendarsUsageDescription', 'NSRemindersUsageDescription'],
+            'Camera': ['android.permission.CAMERA', 'NSCameraUsageDescription'],
+            'Contacts': ['android.permission.READ_CONTACTS', 'android.permission.WRITE_CONTACTS', 'NSContactsUsageDescription'],
+            'Location': ['android.permission.ACCESS_COARSE_LOCATION', 'android.permission.ACCESS_FINE_LOCATION', 'android.permission.ACCESS_BACKGROUND_LOCATION', 'android.permission.ACCESS_MEDIA_LOCATION', 'NSLocationAlwaysAndWhenInUseUsageDescription', 'NSLocationUsageDescription', 'NSLocationWhenInUseUsageDescription', 'NSLocationTemporaryUsageDescriptionDictionary', 'NSLocationAlwaysUsageDescription', 'NSWidgetWantsLocation', 'NSLocationDefaultAccuracyReduced'],
+            'Microphone': ['android.permission.RECORD_AUDIO', 'NSMicrophoneUsageDescription'],
+            'Health sensors': ['android.permission.BODY_SENSORS', 'android.permission.ACTIVITY_RECOGNITION', 'NSHealthUpdateUsageDescription', 'NSHealthShareUsageDescription', 'NSHealthClinicalHealthRecordsShareUsageDescription', 'NSHealthRequiredReadAuthorizationTypeIdentifiers'],
+            'Storage': ['android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.MANAGE_EXTERNAL_STORAGE', 'NSPhotoLibraryAddUsageDescription', 'NSPhotoLibraryUsageDescription', 'NSAppleMusicUsageDescription'],
+            'HomeKit': ['NSHomeKitUsageDescription'],
+            'None': []
         }
-        permission_names = pd.DataFrame(list(permissions.keys()), columns=["permission_name"])
 
+        permission_names = pd.DataFrame(permissions.keys(), columns=['permission_name'])
         all_permissions = [item for sublist in permissions.values() for item in sublist]
-
-        def calculate_permission_set(row):
-            permission = row['permission_name']
-            permission_keys = permissions.get(permission, [])
-
+        permissions_select = 'CASE '
+        for permission, permission_keys in permissions.items():
             if len(permission_keys) > 0:
-                for key in permission_keys:
-                    if key in row['permissions']:
-                        return 1
-                return 0
+                permissions_select += 'WHEN permission_names.permission_name = "' + permission + '" AND (' + ' OR '.join(f'app_infos.permissions LIKE \'%{key}%\'' for key in permission_keys) + f') THEN 1 \n'
             else:
-                for key in all_permissions:
-                    if key not in row['permissions']:
-                        return 1
-                return 0
+                # When none of the permissions above is set
+                permissions_select += 'WHEN permission_names.permission_name = "' + permission + '" AND (' + ' AND '.join(f'app_infos.permissions NOT LIKE \'%{key}%\'' for key in all_permissions) + f') THEN 1 \n'
+        permissions_select += ' ELSE 0 END AS ' + 'permission_set'\
 
-        merged = pd.merge(app_infos, apps, how='left',
-                        left_on=['app_id'],
-                        right_on=['android_id']).fillna(
-                            pd.merge(app_infos, apps, how='left',
-                                    left_on=['app_id'],
-                                    right_on=['ios_bundle_id']))
+        app_permissions_query = '''
+            (SELECT
+            app_infos.os,
+            apps.android_id AS app_id,
+            permission_names.permission_name,
+            ''' + permissions_select + '''
+            FROM app_infos
+            LEFT JOIN apps ON (app_infos.os = 'android' AND apps.android_id = app_infos.app_id) OR (app_infos.os = 'ios' AND apps.ios_bundle_id = app_infos.app_id)
+            CROSS JOIN permission_names
+            WHERE app_infos.analysis_type = 'static'
+            AND permission_set = 1
+            AND permission_name != 'HomeKit'
+            AND permission_name != 'None') app_permissions
+        '''
 
-        merged = pd.merge(merged.assign(key=1), permission_names.assign(key=1),
-                        on='key').drop('key', axis=1)
+        app_permissions_diff_query = '''
+            (SELECT app_id,
+            permission_name,
+            CASE WHEN SUM(permission_set) = 1 THEN 1 ELSE 0 END AS perm_different
+            FROM ''' + app_permissions_query + '''
+            GROUP BY app_id, permission_name, permission_set) app_permissions_diff
+        '''
 
-        merged['permission_set'] = merged.apply(calculate_permission_set, axis=1)
+        permissions_diff_query = '''
+            (SELECT app_id, SUM(perm_different) AS different
+            FROM ''' + app_permissions_diff_query + '''
+            GROUP BY app_id) permissions_diff
+        '''
 
-        filtered = merged[(merged['analysis_type'] == 'static') & (
-            merged['permission_set'] == 1) & (
-                ~merged['permission_name'].isin(['HomeKit', 'None']))]
+        query_results = psql('''
+            SELECT different, COUNT(*) AS app_count
+            FROM ''' + permissions_diff_query + '''
+            GROUP BY different
+        ''', locals()).fillna(0)
 
-        grouped = filtered.groupby(['app_id', 'permission_name',
-                                    'permission_set'])['permission_set'].sum().reset_index(
-                                        name='perm_different')
-
-        permissions_diff = grouped.groupby('app_id')['perm_different'].sum().reset_index(
-            name='different')
-
-        query_results = permissions_diff.groupby('different').size().reset_index(
-            name='app_count')
-
-        query_results.fillna(0, inplace=True)
-
-        statistics["permissionsDiff"] = {
-            "title": "Difference in used privacy-sensitive permissions",
-            "labels": [str(i) for i in range(len(permissions) - 1)],
-            "values": [0] * (len(permissions) - 1),
+        statistics['permissionsDiff'] = {
+            'title': 'Difference in used privacy-sensitive permissions',
+            'labels': [str(i) for i in range(len(permissions) - 1)],
+            'values': [0] * (len(permissions) - 1)
         }
 
         for _, result in query_results.iterrows():
-            statistics["permissionsDiff"]["values"][int(result["different"])] = int(
-                result["app_count"]
-            )
+            statistics['permissionsDiff']['values'][int(result['different'])] = int(result['app_count'])
 
         progress.n += 1
         progress.refresh()
@@ -1441,17 +1401,15 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             "greenpois0n (iOS 3)": ["greenpois0n"],
             "blackra1n (iOS 3)": ["blackra1n", "blacksn0w"],
         }
-        query_results = psql(
-            """
-            SELECT DISTINCT app_id, pattern FROM app_results
-            WHERE pattern IS NOT NULL
-            AND detector = 'root'
-            AND analysis_type = 'static'
-            AND os = 'ios'
-            ORDER BY app_id
-        """,
-            locals(),
-        )
+        query_results = app_results[(app_results['pattern'].notnull()) & 
+                                    (app_results['detector'] == 'root') & 
+                                    (app_results['analysis_type'] == 'static') & 
+                                    (app_results['os'] == 'ios')].sort_values(by=['app_id'])[['app_id', 'pattern']]
+        query_results = query_results.groupby('app_id')['pattern'].apply(lambda x: ', '.join(x)).reset_index()
+        print(query_results)
+        
+        # filtered = app_results[(app_results['pattern'] != None & app_results['detector'] == 'root' & app_results['analysis_type'] == 'static' & app_results['os'] == 'ios')]
+        # query_results = filtered.groupby('app_id', 'pattern').sort_index('app_id')
 
         statistics["jailbreaks"] = {
             "title": "Detected jaibreaks",
@@ -1469,6 +1427,8 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
                 if any(keyword in result["pattern"] for keyword in jailbreak_keywords):
                     number_of_apps += 1
                     last_app_id = result["app_id"]
+                # else:
+                #     print(result["pattern"])
 
             statistics["jailbreaks"]["values"].append(number_of_apps)
 
@@ -1479,24 +1439,105 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
     # Detection of different hooking frameworks #
     #############################################
     if "hookingFrameworks" in statistics_to_show:
+        # hooking_frameworks = {
+        #     "Frida": ["frida"],
+        #     "Cydia Substrate": ["cydia", "substrate", "tweakinject"],
+        #     "Xposed": ["xposed", "edxp"],
+        #     "Riru": ["riru"],
+        #     "Zygisk": ["zygisk"],
+        # }
+        
+        # query_results = app_results[(app_results['pattern'].notnull() | app_results['file'].notnull()) & 
+        #                             (app_results['detector'] == 'hooking')].sort_values(by=['app_id', 'os', 'analysis_type', 'device']).fillna("")
+        # print(query_results.columns)
+        # query_results = query_results.groupby(['app_id', 'os', 'analysis_type', 'device', 'file'])['pattern'].apply(lambda x: ', '.join(x)).reset_index()
+        # print(query_results.columns)
+        # query_results = query_results.groupby(['app_id', 'os', 'analysis_type', 'device', 'pattern'])['file'].apply(lambda x: ', '.join(x)).reset_index()
+        # print(query_results)
+
+        # statistics["hookingFrameworks"] = {
+        #     "title": "Detected hooking frameworks",
+        #     "labels": list(hooking_frameworks.keys()),
+        #     "values": {
+        #         "androidStatic": [],
+        #     },
+        # }
+        # for device in Config().devices:
+        #     statistics["hookingFrameworks"]["values"][f"androidDynamic_{device['name'].capitalize()}"] = []
+        #     # statistics["hookingFrameworks"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = []
+        # statistics["hookingFrameworks"]["values"]["iosStatic"] = []
+        # statistics["hookingFrameworks"]["values"]["iosDynamic"] = []
+
+        # for _, framework_keywords in hooking_frameworks.items():
+        #     number_of_apps = {
+        #         "androidStatic": 0,
+        #     }
+        #     for device in Config().devices:
+        #         number_of_apps[f"androidDynamic_{device['name'].capitalize()}"] = 0
+        #     number_of_apps["iosStatic"] = 0
+        #     number_of_apps["iosDynamic"] = 0
+        #     last_app_id = None
+        #     last_app_os = None
+        #     last_analysis_type = None
+        #     last_device = None
+        #     for _, result in query_results.iterrows():
+        #         if (
+        #             last_app_id == result["app_id"]
+        #             and last_app_os == result["os"]
+        #             and last_analysis_type == result["analysis_type"]
+        #             and last_device == result["device"]
+        #         ):
+        #             continue
+
+        #         if any(
+        #             any(keyword in result[key].lower() for key in ["pattern", "file"])
+        #             for keyword in framework_keywords
+        #         ):
+        #             key = f'{result["os"]}{result["analysis_type"].capitalize()}'
+        #             if result["analysis_type"] == "dynamic" and result["os"] == "android":
+        #                 key += f'_{result["device"].capitalize()}'
+        #             number_of_apps[key] += 1
+        #             last_app_id = result["app_id"]
+        #             last_app_os = result["os"]
+        #             last_analysis_type = result["analysis_type"]
+        #             last_device = result["device"]
+
+        #     for os in ["android", "ios"]:
+        #         for analysis_type in ["static", "dynamic"]:
+        #             for device in Config().devices:
+        #                 if device["os"] != os:
+        #                     continue
+        #                 key = f"{os}{analysis_type.capitalize()}"
+        #                 if analysis_type == "dynamic" and os == "android":
+        #                     key += f'_{device["name"].capitalize()}'
+        #                 statistics["hookingFrameworks"]["values"][key].append(
+        #                     number_of_apps[key]
+        #                 )
+
+        # progress.n += 1
+        # progress.refresh()
+        
         hooking_frameworks = {
-            "Frida": ["frida"],
-            "Cydia Substrate": ["cydia", "substrate", "tweakinject"],
-            "Xposed": ["xposed", "edxp"],
-            "Riru": ["riru"],
-            "Zygisk": ["zygisk"],
+            'Frida': ['frida'],
+            'Cydia Substrate': ['cydia', 'substrate', 'tweakinject'],
+            'Xposed': ['xposed', 'edxp'],
+            'Riru': ['riru'],
+            'Zygisk': ['zygisk'],
+        }
+        query_results = app_results[(app_results['pattern'].notnull() | app_results['file'].notnull() | app_results['app'].notnull()) & 
+                                    (app_results['detector'] == 'hooking')].sort_values(by=['app_id', 'os', 'analysis_type']).fillna('')
+
+        statistics['hookingFrameworks'] = {
+            'title': 'Detected hooking frameworks',
+            'labels': list(hooking_frameworks.keys()),
+            'values': {
+                'androidStatic': [],
+                # 'androidDynamic': [],
+                # 'iosStatic': [],
+                # 'iosDynamic': [],
+            }
         }
         
-        query_results = app_results[(app_results['pattern'].notnull() | app_results['file'].notnull()) & 
-                                    (app_results['detector'] == 'hooking')].sort_values(by=['app_id', 'os', 'analysis_type', 'device']).fillna("")
-
-        statistics["hookingFrameworks"] = {
-            "title": "Detected hooking frameworks",
-            "labels": list(hooking_frameworks.keys()),
-            "values": {
-                "androidStatic": [],
-            },
-        }
         for device in Config().devices:
             statistics["hookingFrameworks"]["values"][f"androidDynamic_{device['name'].capitalize()}"] = []
             # statistics["hookingFrameworks"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = []
@@ -1516,38 +1557,31 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             last_analysis_type = None
             last_device = None
             for _, result in query_results.iterrows():
-                if (
-                    last_app_id == result["app_id"]
-                    and last_app_os == result["os"]
-                    and last_analysis_type == result["analysis_type"]
-                    and last_device == result["device"]
-                ):
+                if last_app_id == result['app_id'] and last_app_os == result['os'] and last_analysis_type == result['analysis_type'] and last_device == result['device']:
                     continue
 
-                if any(
-                    any(keyword in result[key].lower() for key in ["pattern", "file"])
-                    for keyword in framework_keywords
-                ):
+                if any(any(keyword in result[key].lower() for key in ['pattern', 'file', 'app']) for keyword in framework_keywords):
                     key = f'{result["os"]}{result["analysis_type"].capitalize()}'
-                    if result["analysis_type"] == "dynamic":
+                    if result["analysis_type"] == "dynamic" and result["os"] == "android":
                         key += f'_{result["device"].capitalize()}'
                     number_of_apps[key] += 1
-                    last_app_id = result["app_id"]
-                    last_app_os = result["os"]
-                    last_analysis_type = result["analysis_type"]
-                    last_device = result["device"]
+                    last_app_id = result['app_id']
+                    last_app_os = result['os']
+                    last_analysis_type = result['analysis_type']
+                    last_device = result['device']
 
-            for os in ["android", "ios"]:
-                for analysis_type in ["static", "dynamic"]:
-                    for device in Config().devices:
-                        if device["os"] != os:
-                            continue
-                        key = f"{os}{analysis_type.capitalize()}"
-                        if analysis_type == "dynamic":
+            for os in ['android', 'ios']:
+                for analysis_type in ['static', 'dynamic']:
+                    if analysis_type == 'dynamic' and os == 'android':
+                        for device in Config().devices:
+                            key = f'{os}{analysis_type.capitalize()}'
                             key += f'_{device["name"].capitalize()}'
-                        statistics["hookingFrameworks"]["values"][key].append(
-                            number_of_apps[key]
-                        )
+                            value = number_of_apps[key]
+                            statistics['hookingFrameworks']['values'][key].append(value)
+                    else:
+                        key = f'{os}{analysis_type.capitalize()}'
+                        value = number_of_apps[key]
+                        statistics['hookingFrameworks']['values'][key].append(value)
 
         progress.n += 1
         progress.refresh()
@@ -1805,9 +1839,72 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             ].append(
                 {"Library": result["library"], "Number of apps": result["app_count"]}
             )
-     ###########################
+    #################################
+    # Average techniques per packer #
+    #################################
+    if "packerTechniques" in statistics_to_show:
+        packers = app_apkid_results["packer"].drop_duplicates().tolist()
+        packer_set = set()
+        for packer in packers:
+            for p in packer.keys():
+                packer_set.add(p)
+            
+         # Perform the android_results subquery
+        android_results = (app_results[(app_results['confident'] == 1) & 
+                                    (app_results['os'] == 'android')]
+                        .groupby('app_id')['detector']
+                        .nunique()
+                        .reset_index(name='detected_android'))
+        
+        #count the unique detectors
+        test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
+        print(test)
+
+        # Perform the left join with android_results
+        merged_android = pd.merge(app_apkid_results, android_results, how='left', left_on='app_id', right_on='app_id')
+        merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
+        merged_android_filtered = merged_android[merged_android['packer'] != {}]
+        # merged_android['packer'] = merged_android['packer'].apply(lambda x: x if x != {} else {'None': 1})
+        print(merged_android_filtered)
+        print(merged_android_filtered['packer'])
+        print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
+        
+        # Unpack the dict of packers
+        merged_android_filtered = merged_android_filtered.explode('packer')
+
+        # Add a new row for each packer
+        merged_android_filtered = merged_android_filtered.reset_index(drop=True)
+        # merged_android = merged_android.append(merged_android[merged_android['packer'].notnull()].copy(), ignore_index=True)
+
+        print(merged_android_filtered)
+
+        # Group by android_category and compute the average values
+        query_results = (merged_android_filtered.groupby('packer')
+                        .agg(detected_android=('detected_android', 'mean'), count=('packer', 'count'))
+                        .reset_index()).fillna(0)
+        query_results = query_results.sort_values(by='detected_android', ascending=False)
+        
+        global_results = merged_android['detected_android'].mean()
+        print(global_results)
+        
+        # android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
+        # query_results = android_merged[android_merged['confident'] == 1].groupby(['os', 'packer'])['detector'].nunique().reset_index(name='techniques_detected')
+        print(query_results)
+        statistics["packerTechniques"] = {
+            "title": "Average number of hardening techniques per packer",
+            "labels": query_results['packer'].tolist(),
+            "values": {
+                "avg": query_results['detected_android'].tolist(),
+                "count": query_results['count'].tolist(),
+                "globalAvg": global_results,
+                # "globalAvg": [global_results] * len(query_results['packer'].tolist()),
+            },
+        }
+        
+            
+    #######################
     # Packer per category #
-    ###########################
+    #######################
     if "packerPerCategory" in statistics_to_show:
         categories = apps["android_category"].drop_duplicates().sort_values().tolist()
         categories.append("Other")
@@ -1859,6 +1956,269 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
                 continue
             for i, category in enumerate(categories):
                 statistics["packerPerCategory"]["values"][packer][i] = statistics["packerPerCategory"]["values"][packer][i] / query_results[query_results['android_category'] == category]['count'].values[0]*100
+
+        progress.n += 1
+        progress.refresh()
+        
+    #################################
+    # Average techniques per obfuscator #
+    #################################
+    if "obfuscatorTechniques" in statistics_to_show:
+        obfuscators = app_apkid_results["obfuscator"].drop_duplicates().tolist()
+        obfuscator_set = set()
+        for obfuscator in obfuscators:
+            for o in obfuscator.keys():
+                if "unreadable" in o:
+                    continue
+                if "Obfuscator-LLVM" in o:
+                    if "(string encryption)" in o:
+                        o = "Obfuscator-LLVM (string encryption)"
+                    else:
+                        o = "Obfuscator-LLVM"
+                obfuscator_set.add(o)
+            
+         # Perform the android_results subquery
+        android_results = (app_results[(app_results['confident'] == 1) & 
+                                    (app_results['os'] == 'android')]
+                        .groupby('app_id')['detector']
+                        .nunique()
+                        .reset_index(name='detected_android'))
+        
+        #count the unique detectors
+        test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
+        print(test)
+
+        # Perform the left join with android_results
+        merged_android = pd.merge(app_apkid_results, android_results, how='left', left_on='app_id', right_on='app_id')
+        merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
+        merged_android_filtered = merged_android[merged_android['obfuscator'] != {}]
+        # merged_android['packer'] = merged_android['packer'].apply(lambda x: x if x != {} else {'None': 1})
+        print(merged_android_filtered)
+        print(merged_android_filtered['obfuscator'])
+        print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
+        
+        # Unpack the dict of obfuscators
+        merged_android_filtered = merged_android_filtered.explode('obfuscator')
+
+        # Add a new row for each obfuscators
+        merged_android_filtered = merged_android_filtered.reset_index(drop=True)
+        merged_android_filtered = merged_android_filtered[~merged_android_filtered['obfuscator'].str.contains('unreadable')]
+        merged_android_filtered['obfuscator'] = merged_android_filtered['obfuscator'].apply(lambda x: 'Obfuscator-LLVM (string encryption)' if 'Obfuscator-LLVM' in x and '(string encryption)' in x else 'Obfuscator-LLVM' if 'Obfuscator-LLVM' in x else x)
+        print(merged_android_filtered)
+
+        # Group by android_category and compute the average values
+        query_results = (merged_android_filtered.groupby('obfuscator')
+                        .agg(detected_android=('detected_android', 'mean'), count=('obfuscator', 'count'))
+                        .reset_index()).fillna(0)
+        query_results = query_results.sort_values(by='detected_android', ascending=False)
+        
+        global_results = merged_android['detected_android'].mean()
+        print(global_results)
+        
+        # android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
+        # query_results = android_merged[android_merged['confident'] == 1].groupby(['os', 'packer'])['detector'].nunique().reset_index(name='techniques_detected')
+        print(query_results)
+        statistics["obfuscatorTechniques"] = {
+            "title": "Average number of hardening techniques per obfuscator",
+            "labels": query_results['obfuscator'].tolist(),
+            "values": {
+                "avg": query_results['detected_android'].tolist(),
+                "count": query_results['count'].tolist(),
+                "globalAvg": global_results,
+                # "globalAvg": [global_results] * len(query_results['packer'].tolist()),
+            },
+        }
+        
+            
+    #######################
+    # Obfuscator per category #
+    #######################
+    if "obfuscatorPerCategory" in statistics_to_show:
+        categories = apps["android_category"].drop_duplicates().sort_values().tolist()
+        categories.append("Other")
+
+        obfuscators = app_apkid_results["obfuscator"].drop_duplicates().tolist()
+        obfuscator_set = set()
+        for obfuscator in obfuscators:
+            for o in obfuscator.keys():
+                if "unreadable" in o:
+                    continue
+                if "Obfuscator-LLVM" in o:
+                    if "(string encryption)" in o:
+                        o = "Obfuscator-LLVM (string encryption)"
+                    else:
+                        o = "Obfuscator-LLVM"
+                obfuscator_set.add(o)
+        android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
+        
+        # Check if the number of apps per category is less than 50
+        small_categories = android_merged[android_merged['android_category'].map(android_merged['android_category'].value_counts()) < len(apps) * 0.015]
+
+        # Group small categories as "other"
+        android_merged.loc[android_merged['android_category'].isin(small_categories['android_category']), 'android_category'] = 'Other'
+        
+        for category in small_categories['android_category']:
+            if category in categories:
+                categories.remove(category)
+            else:
+                print(f"Category {category} not in categories")
+            
+        query_results = android_merged.groupby(['android_category']).size().reset_index(name='count')
+            
+        statistics["obfuscatorPerCategory"] = {
+            "title": "Percentage of obfuscators used per category",
+            "labels": categories,
+            "values": {
+            },
+        }
+        
+        obfuscator_set = sorted(obfuscator_set)
+        
+        for obfuscator in obfuscator_set:
+            statistics["obfuscatorPerCategory"]["values"][obfuscator] = [0] * len(categories)
+        
+        for _, row in android_merged.iterrows():
+            category = row['android_category']
+            obfuscator = row['obfuscator']
+            if isinstance(obfuscator, dict):
+                obfuscator_keys = obfuscator.keys()
+                for key in obfuscator_keys:
+                    if "unreadable" in key:
+                        continue
+                    if "Obfuscator-LLVM" in key:
+                        if "(string encryption)" in key:
+                            key = "Obfuscator-LLVM (string encryption)"
+                        else:
+                            key = "Obfuscator-LLVM"
+                    statistics["obfuscatorPerCategory"]["values"][key][categories.index(category)] += 1
+                    
+        # percentages
+        for obfuscator in obfuscator_set:
+            if obfuscator == "None":
+                continue
+            for i, category in enumerate(categories):
+                statistics["obfuscatorPerCategory"]["values"][obfuscator][i] = statistics["obfuscatorPerCategory"]["values"][obfuscator][i] / query_results[query_results['android_category'] == category]['count'].values[0]*100
+
+        progress.n += 1
+        progress.refresh()
+
+    #################################
+    # Average techniques per Protector #
+    #################################
+    if "protectorTechniques" in statistics_to_show:
+        protectors = app_apkid_results["protector"].drop_duplicates().tolist()
+        protector_set = set()
+        for protector in protectors:
+            for p in protector.keys():
+                protector_set.add(p)
+            
+         # Perform the android_results subquery
+        android_results = (app_results[(app_results['confident'] == 1) & 
+                                    (app_results['os'] == 'android')]
+                        .groupby('app_id')['detector']
+                        .nunique()
+                        .reset_index(name='detected_android'))
+        
+        #count the unique detectors
+        test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
+        print(test)
+
+        # Perform the left join with android_results
+        merged_android = pd.merge(app_apkid_results, android_results, how='left', left_on='app_id', right_on='app_id')
+        merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
+        merged_android_filtered = merged_android[merged_android['protector'] != {}]
+        # merged_android['protector'] = merged_android['protector'].apply(lambda x: x if x != {} else {'None': 1})
+        print(merged_android_filtered)
+        print(merged_android_filtered['protector'])
+        print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
+        
+        # Unpack the dict of protectors
+        merged_android_filtered = merged_android_filtered.explode('protector')
+
+        # Add a new row for each protector
+        merged_android_filtered = merged_android_filtered.reset_index(drop=True)
+        # merged_android = merged_android.append(merged_android[merged_android['protector'].notnull()].copy(), ignore_index=True)
+
+        print(merged_android_filtered)
+
+        # Group by android_category and compute the average values
+        query_results = (merged_android_filtered.groupby('protector')
+                        .agg(detected_android=('detected_android', 'mean'), count=('protector', 'count'))
+                        .reset_index()).fillna(0)
+        query_results = query_results.sort_values(by='detected_android', ascending=False)
+        
+        global_results = merged_android['detected_android'].mean()
+        print(global_results)
+        
+        # android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
+        # query_results = android_merged[android_merged['confident'] == 1].groupby(['os', 'protector'])['detector'].nunique().reset_index(name='techniques_detected')
+        print(query_results)
+        statistics["protectorTechniques"] = {
+            "title": "Average number of hardening techniques per protector",
+            "labels": query_results['protector'].tolist(),
+            "values": {
+                "avg": query_results['detected_android'].tolist(),
+                "count": query_results['count'].tolist(),
+                "globalAvg": global_results,
+                # "globalAvg": [global_results] * len(query_results['protector'].tolist()),
+            },
+        }
+        
+            
+    #######################
+    # Protector per category #
+    #######################
+    if "protectorPerCategory" in statistics_to_show:
+        categories = apps["android_category"].drop_duplicates().sort_values().tolist()
+        categories.append("Other")
+
+        protectors = app_apkid_results["protector"].drop_duplicates().tolist()
+        protector_set = set()
+        for protector in protectors:
+            for p in protector.keys():
+                protector_set.add(p)
+        android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
+        
+        # Check if the number of apps per category is less than 50
+        small_categories = android_merged[android_merged['android_category'].map(android_merged['android_category'].value_counts()) < len(apps) * 0.015]
+
+        # Group small categories as "other"
+        android_merged.loc[android_merged['android_category'].isin(small_categories['android_category']), 'android_category'] = 'Other'
+        
+        for category in small_categories['android_category']:
+            if category in categories:
+                categories.remove(category)
+            else:
+                print(f"Category {category} not in categories")
+            
+        query_results = android_merged.groupby(['android_category']).size().reset_index(name='count')
+            
+        statistics["protectorPerCategory"] = {
+            "title": "Percentage of protectors used per category",
+            "labels": categories,
+            "values": {
+            },
+        }
+        
+        protector_set = sorted(protector_set)
+        
+        for protector in protector_set:
+            statistics["protectorPerCategory"]["values"][protector] = [0] * len(categories)
+        
+        for _, row in android_merged.iterrows():
+            category = row['android_category']
+            protector = row['protector']
+            if isinstance(protector, dict):
+                protector_keys = protector.keys()
+                for key in protector_keys:
+                    statistics["protectorPerCategory"]["values"][key][categories.index(category)] += 1
+                    
+        # percentages
+        for protector in protector_set:
+            if protector == "None":
+                continue
+            for i, category in enumerate(categories):
+                statistics["protectorPerCategory"]["values"][protector][i] = statistics["protectorPerCategory"]["values"][protector][i] / query_results[query_results['android_category'] == category]['count'].values[0]*100
 
         progress.n += 1
         progress.refresh()
