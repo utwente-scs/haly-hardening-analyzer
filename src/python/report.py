@@ -163,8 +163,8 @@ def _parse_result(json_file, app_os, app_id, other_app_id, analysis_type, device
                 detection_result["library"] = get_library(detection_result)
                 
                 # # DONE Can remove?
-                # if _should_ignore_detection(detection_result):
-                #     continue
+                if _should_ignore_detection(detection_result):
+                    continue
                 
                 if not ("pattern" in detection_result):
                     detection_result["pattern"] = ""
@@ -259,6 +259,8 @@ def _process_app(app, android_to_app):
                                     f"total{app_os.capitalize()}{analysis_type.capitalize()}"
                                 ] += 1
                                 counted = True
+                        else:
+                            print(f"File {json_file} does not exist")
                 elif analysis_type == "apkid" and app_os == "android":
                     json_file = join(
                         result_path(app_os), package_id, f"{analysis_type}_results.json"
@@ -268,6 +270,8 @@ def _process_app(app, android_to_app):
                         app_counts[
                             f"total{app_os.capitalize()}APKiD"
                         ] += 1
+                    else:
+                        print(f"File {json_file} does not exist")
                 else:
                     json_file = join(
                         result_path(app_os), package_id, f"{analysis_type}.json"
@@ -277,6 +281,8 @@ def _process_app(app, android_to_app):
                         app_counts[
                             f"total{app_os.capitalize()}{analysis_type.capitalize()}"
                         ] += 1
+                    else:
+                        print(f"File {json_file} does not exist")
     except KeyError:
         print(f"KeyError {app.package_id}")
         analysis_completed = False
@@ -298,6 +304,7 @@ def _process_app(app, android_to_app):
                 if app_os == "ios"
                 else app.package_id
             )
+            # print(f"App ID: {app_id}")
             other_app_id = (
                 app.package_id
                 if app_os == "ios"
@@ -428,6 +435,7 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                 results = future.result()
                 if results is None:
                     print(f"Error processing {app.package_id}")
+                    continue
                 # else:
                     # print(f"Processed {app.package_id}: {results}")
                 (app_infos_r, app_results_r, app_counts_r, app_apkid_results_r, analysis_completed_r) = results
@@ -755,6 +763,8 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
             statistics["hardeningTechniques"]["values"][f"androidDynamic_{device['name'].capitalize()}?"] = [0] * n_techs
         for ios_type in ["iosStatic", "iosStatic?", "iosDynamic", "iosDynamic?"]:
             statistics["hardeningTechniques"]["values"][ios_type] = [0] * n_techs
+            
+        app_results["confident"] = pd.to_numeric(app_results["confident"])
         apps_results_grouped = app_results.groupby(["detector", "analysis_type", "os", "app_id", "device"])
         apps_results_grouped_confidence = apps_results_grouped['confident'].sum().reset_index()
         apps_results_grouped_confidence['confident'] = apps_results_grouped_confidence['confident'].apply(lambda x: 1 if x > 0 else 0)
@@ -1125,12 +1135,12 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
 
             if len(permission_keys) > 0:
                 for key in permission_keys:
-                    if type(row['permissions']) != float and key in row['permissions']:
+                    if type(row['permissions']) != float and row['permissions'] != None and key in row['permissions']:
                         return 1
                 return 0
             else:
                 for key in all_permissions:
-                    if type(row['permissions']) != float and key not in row['permissions']:
+                    if type(row['permissions']) != float and row['permissions'] != None and key not in row['permissions']:
                         return 1
                 return 0
 
@@ -1266,12 +1276,12 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
 
             if len(permission_keys) > 0:
                 for key in permission_keys:
-                    if type(row['permissions']) != float and key in row['permissions']:
+                    if type(row['permissions']) != float and row['permissions'] != None and key in row['permissions']:
                         return 1
                 return 0
             else:
                 for key in all_permissions:
-                    if type(row['permissions']) != float and key not in row['permissions']:
+                    if type(row['permissions']) != float and row['permissions'] != None and key not in row['permissions']:
                         return 1
             return 0
         
@@ -1406,7 +1416,6 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
                                     (app_results['analysis_type'] == 'static') & 
                                     (app_results['os'] == 'ios')].sort_values(by=['app_id'])[['app_id', 'pattern']]
         query_results = query_results.groupby('app_id')['pattern'].apply(lambda x: ', '.join(x)).reset_index()
-        print(query_results)
         
         # filtered = app_results[(app_results['pattern'] != None & app_results['detector'] == 'root' & app_results['analysis_type'] == 'static' & app_results['os'] == 'ios')]
         # query_results = filtered.groupby('app_id', 'pattern').sort_index('app_id')
@@ -1857,17 +1866,17 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
                         .reset_index(name='detected_android'))
         
         #count the unique detectors
-        test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
-        print(test)
+        # test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
+        # print(test)
 
         # Perform the left join with android_results
         merged_android = pd.merge(app_apkid_results, android_results, how='left', left_on='app_id', right_on='app_id')
         merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
         merged_android_filtered = merged_android[merged_android['packer'] != {}]
         # merged_android['packer'] = merged_android['packer'].apply(lambda x: x if x != {} else {'None': 1})
-        print(merged_android_filtered)
-        print(merged_android_filtered['packer'])
-        print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
+        # print(merged_android_filtered)
+        # print(merged_android_filtered['packer'])
+        # print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
         
         # Unpack the dict of packers
         merged_android_filtered = merged_android_filtered.explode('packer')
@@ -1876,7 +1885,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         merged_android_filtered = merged_android_filtered.reset_index(drop=True)
         # merged_android = merged_android.append(merged_android[merged_android['packer'].notnull()].copy(), ignore_index=True)
 
-        print(merged_android_filtered)
+        # print(merged_android_filtered)
 
         # Group by android_category and compute the average values
         query_results = (merged_android_filtered.groupby('packer')
@@ -1885,11 +1894,11 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         query_results = query_results.sort_values(by='detected_android', ascending=False)
         
         global_results = merged_android['detected_android'].mean()
-        print(global_results)
+        # print(global_results)
         
         # android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
         # query_results = android_merged[android_merged['confident'] == 1].groupby(['os', 'packer'])['detector'].nunique().reset_index(name='techniques_detected')
-        print(query_results)
+        # print(query_results)
         statistics["packerTechniques"] = {
             "title": "Average number of hardening techniques per packer",
             "labels": query_results['packer'].tolist(),
@@ -1985,17 +1994,17 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
                         .reset_index(name='detected_android'))
         
         #count the unique detectors
-        test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
-        print(test)
+        # test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
+        # print(test)
 
         # Perform the left join with android_results
         merged_android = pd.merge(app_apkid_results, android_results, how='left', left_on='app_id', right_on='app_id')
         merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
         merged_android_filtered = merged_android[merged_android['obfuscator'] != {}]
         # merged_android['packer'] = merged_android['packer'].apply(lambda x: x if x != {} else {'None': 1})
-        print(merged_android_filtered)
-        print(merged_android_filtered['obfuscator'])
-        print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
+        # print(merged_android_filtered)
+        # print(merged_android_filtered['obfuscator'])
+        # print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
         
         # Unpack the dict of obfuscators
         merged_android_filtered = merged_android_filtered.explode('obfuscator')
@@ -2004,7 +2013,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         merged_android_filtered = merged_android_filtered.reset_index(drop=True)
         merged_android_filtered = merged_android_filtered[~merged_android_filtered['obfuscator'].str.contains('unreadable')]
         merged_android_filtered['obfuscator'] = merged_android_filtered['obfuscator'].apply(lambda x: 'Obfuscator-LLVM (string encryption)' if 'Obfuscator-LLVM' in x and '(string encryption)' in x else 'Obfuscator-LLVM' if 'Obfuscator-LLVM' in x else x)
-        print(merged_android_filtered)
+        # print(merged_android_filtered)
 
         # Group by android_category and compute the average values
         query_results = (merged_android_filtered.groupby('obfuscator')
@@ -2013,11 +2022,11 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         query_results = query_results.sort_values(by='detected_android', ascending=False)
         
         global_results = merged_android['detected_android'].mean()
-        print(global_results)
+        # print(global_results)
         
         # android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
         # query_results = android_merged[android_merged['confident'] == 1].groupby(['os', 'packer'])['detector'].nunique().reset_index(name='techniques_detected')
-        print(query_results)
+        # print(query_results)
         statistics["obfuscatorTechniques"] = {
             "title": "Average number of hardening techniques per obfuscator",
             "labels": query_results['obfuscator'].tolist(),
@@ -2120,17 +2129,17 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
                         .reset_index(name='detected_android'))
         
         #count the unique detectors
-        test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
-        print(test)
+        # test = app_results[(app_results['confident'] == 1) & (app_results['os'] == 'android')].groupby('detector')['detector'].nunique()
+        # print(test)
 
         # Perform the left join with android_results
         merged_android = pd.merge(app_apkid_results, android_results, how='left', left_on='app_id', right_on='app_id')
         merged_android['detected_android'] = merged_android['detected_android'].fillna(0)
         merged_android_filtered = merged_android[merged_android['protector'] != {}]
         # merged_android['protector'] = merged_android['protector'].apply(lambda x: x if x != {} else {'None': 1})
-        print(merged_android_filtered)
-        print(merged_android_filtered['protector'])
-        print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
+        # print(merged_android_filtered)
+        # print(merged_android_filtered['protector'])
+        # print((merged_android_filtered[merged_android_filtered['detected_android'] >= 7.9]))
         
         # Unpack the dict of protectors
         merged_android_filtered = merged_android_filtered.explode('protector')
@@ -2139,7 +2148,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         merged_android_filtered = merged_android_filtered.reset_index(drop=True)
         # merged_android = merged_android.append(merged_android[merged_android['protector'].notnull()].copy(), ignore_index=True)
 
-        print(merged_android_filtered)
+        # print(merged_android_filtered)
 
         # Group by android_category and compute the average values
         query_results = (merged_android_filtered.groupby('protector')
@@ -2148,11 +2157,11 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         query_results = query_results.sort_values(by='detected_android', ascending=False)
         
         global_results = merged_android['detected_android'].mean()
-        print(global_results)
+        # print(global_results)
         
         # android_merged = pd.merge(apps, app_apkid_results, how='left', left_on='android_id', right_on='app_id')
         # query_results = android_merged[android_merged['confident'] == 1].groupby(['os', 'protector'])['detector'].nunique().reset_index(name='techniques_detected')
-        print(query_results)
+        # print(query_results)
         statistics["protectorTechniques"] = {
             "title": "Average number of hardening techniques per protector",
             "labels": query_results['protector'].tolist(),
@@ -2265,8 +2274,11 @@ def app(path_app_id):
             results[atype][os] = None
             if app_id[os] is None:
                 continue
-
-            results_path = result_path(join(os, app_id[os], f"{atype}.json"))
+            
+            if atype == "static":
+                results_path = result_path(join(os, app_id[os], f"{atype}.json"))
+            else:
+                results_path = result_path(join(os, app_id[os], f"{atype}_root.json"))
             if exists(results_path):
                 results[atype][os] = {}
                 with open(results_path, "r") as f:
