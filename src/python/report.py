@@ -7,6 +7,7 @@ from models.message import StaticMessage, DynamicMessage
 import json
 import glob
 import pandas as pd
+from scipy.stats import chi2_contingency
 from tqdm import tqdm
 from pandasql import sqldf as psql
 from flask_caching import Cache
@@ -771,6 +772,56 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
                 
         technique_counts = apps_results_grouped_confidence.groupby(['detector', 'analysis_type', 'os', 'confident',"device"])['app_id'].nunique().reset_index()
         technique_counts.rename(columns={'app_id': 'count'}, inplace=True)
+        
+        detector_names = ["debug", "tamper", "hooking", "emulation", "root", "keylogger", "screenreader", "pinning"]
+        detector_counts = {
+            'techniques': [],
+            'device': [],
+            'detected': [],
+            'not_detected': []
+        }
+        
+        devices = Config().devices
+        emulator_true_counts = 0
+        emulator_false_counts = 0
+        rooted_true_counts = 0
+        rooted_false_counts = 0
+        
+        for detector in detector_names:
+            for dev in devices:
+                dynamic_detector = technique_counts[
+                    (technique_counts['detector'] == detector) &
+                    (technique_counts['analysis_type'] == 'dynamic') &
+                    (technique_counts['os'] == 'android') &
+                    (technique_counts['device'] == dev['name'])
+                    ]
+                detector_count = dynamic_detector.groupby(['confident']).sum()
+                detector_counts['techniques'].append(detector)
+                detector_counts['device'].append(dev['name'])
+                detector_counts["detected"].append(detector_count["count"].values[0])
+                detector_counts["not_detected"].append(statistics["totalAndroidDynamic" + dev['name'].capitalize()] - detector_count["count"].values[0])
+                
+        data_df = pd.DataFrame(detector_counts)
+        print(data_df)
+        
+        contingency_table = pd.pivot_table(data_df, values=['detected', 'not_detected'],
+                            index=['techniques'],
+                            columns=['device'],
+                            aggfunc=sum)
+
+        print(contingency_table)
+        for technique in contingency_table.index:
+            # Extract detected and not detected values for emulator and rooted environments
+            table = contingency_table.loc[technique].values.reshape(2, 2)
+            
+            # Perform Chi-Squared Test
+            chi2, p, dof, expected = chi2_contingency(table)
+            
+            # Print results for each hardening technique
+            print(f"\nHardening Technique: {technique}")
+            print("Chi2 Statistic:", chi2.round(3))
+            print("p-value:", p.round(3))
+        
                 
         for _, result in technique_counts.iterrows():
             if result["detector"] in hardening_techniques:
