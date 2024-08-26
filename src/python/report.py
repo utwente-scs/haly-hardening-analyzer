@@ -235,6 +235,8 @@ def _process_app(app, android_to_app):
     try:
         for app_os in ["ios", "android"]:
             for analysis_type in ["static", "dynamic", "apkid"]:
+                if app_os == "ios" and analysis_type == "apkid":    
+                    continue
                 package_id = (
                         android_to_app[app.package_id]["ios_bundle_id"]
                     if app_os == "ios"
@@ -300,6 +302,8 @@ def _process_app(app, android_to_app):
     # Process app results
     for app_os in ["ios", "android"]:
         for analysis_type in ["static", "dynamic", "apkid"]:
+            if app_os == "ios" and analysis_type == "apkid":
+                continue
             app_id = (
                 android_to_app[app.package_id]["ios_bundle_id"]
                 if app_os == "ios"
@@ -692,7 +696,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         "hardeningTechniquesPerPermission",
         "hardeningTechniquesPerPermissionCount",
         "permissionsDiff",
-        "jailbreaks",
+        # "jailbreaks",
         "hookingFrameworks",
         "plaintextTraffic",
         "plaintextTrafficType",
@@ -782,10 +786,6 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         }
         
         devices = Config().devices
-        emulator_true_counts = 0
-        emulator_false_counts = 0
-        rooted_true_counts = 0
-        rooted_false_counts = 0
         
         for detector in detector_names:
             for dev in devices:
