@@ -264,6 +264,7 @@ def _process_app(app, android_to_app):
                                 counted = True
                         else:
                             print(f"File {json_file} does not exist")
+                            analysis_completed = False
                 elif analysis_type == "apkid" and app_os == "android":
                     json_file = join(
                         result_path(app_os), package_id, f"{analysis_type}_results.json"
@@ -286,6 +287,7 @@ def _process_app(app, android_to_app):
                         ] += 1
                     else:
                         print(f"File {json_file} does not exist")
+                        analysis_completed = False
     except KeyError:
         print(f"KeyError {app.package_id}")
         analysis_completed = False
@@ -385,10 +387,6 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                 )
                 if file == "app_counts":
                     data = dict(zip(data["key"], data["value"]))
-                if file == "app_results":
-                    data["confident"] = data["confident"].apply(
-                        lambda x: True if x == "True" else False
-                    ).fillna(False)
                 if file == "app_apkid_results":
                     data["packer"] = data["packer"].apply(
                         lambda x: json.loads(x.replace("'", '"')) if x != {} else {}
@@ -696,7 +694,7 @@ def _get_statistics() -> Tuple[pd.DataFrame, dict]:
         "hardeningTechniquesPerPermission",
         "hardeningTechniquesPerPermissionCount",
         "permissionsDiff",
-        # "jailbreaks",
+        "jailbreaks",
         "hookingFrameworks",
         "plaintextTraffic",
         "plaintextTrafficType",
