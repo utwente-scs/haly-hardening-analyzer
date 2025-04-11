@@ -8,8 +8,9 @@ from inc.util import run_system_command
 from inc.context import Context
 from time import sleep
 from tidevice.exceptions import SocketError
+from inc.config import Config
 
-logger = logging.getLogger('hardeninganalyzer')
+logger = logging.getLogger("hardeninganalyzer")
 
 def is_app_installed(app: App) -> bool:
     """
@@ -19,21 +20,24 @@ def is_app_installed(app: App) -> bool:
     """
     if Context().is_ios():
         while True:
-            (success, output, _) = run_system_command(f'tidevice appinfo {app.package_id}')
+            (success, output, _) = run_system_command(
+                f"tidevice appinfo {app.package_id}"
+            )
             if not success and "ConnectionRefusedError" in output:
-                logger.error('Could not connect to iPhone. Is it connected?')
+                logger.error("Could not connect to iPhone. Is it connected?")
                 sleep(2)
             else:
                 return success
 
     elif Context().is_android():
-        package_installed = adb(f'shell pm list packages {app.package_id}')
+        package_installed = adb(f"shell pm list packages {app.package_id}", Config().dev)
         if package_installed is False:
             exit(1)
         else:
-            return package_installed.strip() != ''
+            return package_installed.strip() != ""
 
-def install_app(app: App, wait_to_finish: bool=True) -> bool:
+
+def install_app(app: App, wait_to_finish: bool = True) -> bool:
     """
     Install an app on the device
     :param app_id: app to install
@@ -53,9 +57,11 @@ def install_app(app: App, wait_to_finish: bool=True) -> bool:
         if exists(ipa):
             # Install app via ipa
             while True:
-                (success, result, _) = run_system_command(f'tidevice install {ipa}')
-                if not success and ("ConnectionRefusedError" in result or "unable to connect" in result):
-                    logger.error('Could not connect to iPhone. Is it connected?')
+                (success, result, _) = run_system_command(f"tidevice install {ipa}")
+                if not success and (
+                    "ConnectionRefusedError" in result or "unable to connect" in result
+                ):
+                    logger.error("Could not connect to iPhone. Is it connected?")
                     sleep(2)
                 elif success:
                     return True
@@ -67,14 +73,15 @@ def install_app(app: App, wait_to_finish: bool=True) -> bool:
 
     elif Context().is_android():
         # Check if the app is already downloaded
-        apks = glob.glob(join(app.get_binaries_path(), '*.apk'))
+        apks = glob.glob(join(app.get_binaries_path(), "*.apk"))
         if len(apks) > 0:
             # Install app via apks
-            apks = ' '.join([shlex.quote(apk) for apk in apks])
-            if adb(f'install-multiple {apks}') is not False:
+            apks = " ".join([shlex.quote(apk) for apk in apks])
+            if adb(f"install-multiple {apks}", Config().dev) is not False:
                 return True
 
     return False
+
 
 def uninstall_app(app: App) -> bool:
     """
@@ -84,9 +91,11 @@ def uninstall_app(app: App) -> bool:
     """
     if Context().is_ios():
         while True:
-            (success, result, _) = run_system_command(f'tidevice uninstall {app.package_id}')
+            (success, result, _) = run_system_command(
+                f"tidevice uninstall {app.package_id}"
+            )
             if not success and "ConnectionRefusedError" in result:
-                logger.error('Could not connect to iPhone. Is it connected?')
+                logger.error("Could not connect to iPhone. Is it connected?")
                 sleep(2)
             elif success:
                 return True
@@ -94,12 +103,15 @@ def uninstall_app(app: App) -> bool:
                 logger.error(f"Failed to uninstall app {app.package_id}: {result}")
                 break
     elif Context().is_android():
-        success = adb(f'uninstall {app.package_id}')
+        success = adb(f"uninstall {app.package_id}", Config().dev)
         if not success:
-            logger.error(f"Failed to uninstall app {app.package_id}")
+            success = adb(f"shell pm uninstall {app.package_id}", Config().dev)
+            if not success:
+                logger.error(f"Failed to uninstall app {app.package_id}")
         return success
-    
+
     return False
+
 
 def grant_permissions(app: App, permissions: list[str]):
     """
@@ -107,4 +119,4 @@ def grant_permissions(app: App, permissions: list[str]):
     :param permissions: permissions to grant
     """
     for permission in permissions:
-        adb(f'shell pm grant {app.package_id} {permission}', True)
+        adb(f"shell pm grant {app.package_id} {permission}", Config().dev, True)

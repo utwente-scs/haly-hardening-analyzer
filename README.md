@@ -80,3 +80,6 @@ Furthermore, inspiration was taken from:
 - RaspScan by Jan Seredynski
 - [app-tls-pinning](https://github.com/NEU-SNS/app-tls-pinning/) by Amogh Pradeep et al. ([Paper](https://dspace.networks.imdea.org/handle/20.500.12761/1623))
 - cross-platform-pps by Magdalena Steinböck et al.
+
+### TODO
+- `device["name"]` to be ignored, only use for identifying.

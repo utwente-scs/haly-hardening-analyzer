@@ -8,6 +8,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js" integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.js" integrity="sha512-CMF3tQtjOoOJoOKlsS7/2loJlkyctwzSoDK/S40iAB+MqWSaf50uObGQSk5Ny/gfRhRCjNLvoxuCvdnERU4WGg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/patternomaly/1.3.2/patternomaly.js" integrity="sha512-gNM40ajr/bSi3Af8i6D4dV2CUWZrkm2zhgeWf46H91zOwWoH8Wwsyf6kQ4syfNyOrnjATrjKkP4ybWD7eKp2KA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-autocolors"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
     <title>Apps</title>
     <style>
         table {
@@ -31,11 +34,13 @@
 
         <div class="mb-4">
             <b>Total number of apps in dataset: </b> {{ statistics['totalApps'] }}<br>
-            <b>Total number of statically analyzed Android apps:</b> {{ statistics['totalAndroidStatic'] }}<br>
-            <b>Total number of dynamically analyzed apps Android apps:</b> {{ statistics['totalAndroidDynamic'] }}<br>
+            {% for key, value in statistics.items() if 'total' in key and 'Android' in key and not "APKiD" in key %}
+            <b>Total number of {{ re.findall('[A-Z][^A-Z]*', key)[1].lower() }}ally analyzed apps{% if re.findall('[A-Z][^A-Z]*', key)|length > 2 %} ({{ re.findall('[A-Z][^A-Z]*', key)[2] }}){% endif %}:</b> {{ value }}<br>
+            {% endfor %}
             <b>Total number of statically analyzed iOS apps:</b> {{ statistics['totalIosStatic'] }}<br>
             <b>Total number of dynamically analyzed iOS apps:</b> {{ statistics['totalIosDynamic'] }}<br>
             <b>Total number of statically analyzed apps on iOS and Android:</b> {{ statistics['totalAnalyzed'] }}<br>
+            <b>Total number of APKiD analyzed apps</b> {{ statistics['totalAndroidAPKiD'] }}<br>
         </div>
 
         {% if 'hardeningTechniques' in statistics %}
@@ -98,6 +103,10 @@
             <h2>{{ statistics['hardeningTechniquesLibrariesNoCommon']['title'] }}</h2>
             <canvas id="hardeningTechniquesLibrariesNoCommon"></canvas>
         {% endif %}
+        {% if 'packerPerCategory' in statistics %}
+            <h2>{{ statistics['packerPerCategory']['title'] }}</h2>
+            <canvas id="packerPerCategory"></canvas>
+        {% endif %}
         {% if 'libraries' in statistics %}
             <h2>Detections in libraries</h2>
             {% for os in statistics['libraries'].keys() %}
@@ -152,19 +161,90 @@
 
     <script>
         Chart.defaults.font.family = "Times";
+        const autocolors = window['chartjs-plugin-autocolors'];
+        Chart.register(autocolors);
+        Chart.register(ChartDataLabels);
 
-        function getOptions(stack=false, yMax={{ statistics['totalAnalyzed'] }}) {
+        function getOptions(stack=false, yMax={{ statistics['totalAnalyzed'] }}, autocolors_enabled=false) {
             return {
+                interaction: {
+                    mode: 'x',
+                    intersect: false,
+                    includeInvisible: true
+                },
                 scales: {
                     x: {
                         stacked: stack
                     },
                     y: {
                         beginAtZero: true,
-                        suggestedMax: yMax
+                        suggestedMax: yMax,
+                        stacked: stack,
                     }
                 },
                 plugins: {
+                    autocolors: {
+                        enabled: autocolors_enabled,
+                    },
+                    datalabels: {
+                        anchor: stack ? 'center' : 'end',
+                        align: stack ? 'center' : 'end',
+                        color: 'black',
+                        font: {
+                            weight: 'bold',
+                        },
+                        formatter: function (value, context) {
+                            // Display the actual data value
+                            if (stack && value < 0.8) {
+                                return '';
+                            }
+
+                            if (typeof value === 'number') {
+                                return value.toFixed(2).replace(/[.,]00/, "");
+                            }
+
+                            return '';
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            footer: function(tooltipItems) {
+                                if (!stack) {
+                                    return;
+                                }
+                                const stacked = tooltipItems[0].parsed._stacks.y._visualValues;
+                                const stackValues = Object.values(stacked);
+                                if (Array.isArray(stackValues)) {
+                                    const stackTotal = stackValues.reduce((acc, val) => acc + val, 0);
+                                    if (typeof yMax === 'undefined' || yMax === null) {
+                                        return `Total: ${stackTotal}`;
+                                    } else {
+                                        return `Total: ${stackTotal} (${((stackTotal / yMax) * 100).toFixed(2)}%)`;
+                                    }
+                                } else {
+                                    return 'Total: N/A';
+                                }
+                            },
+                            beforeLabel: function(tooltipItem) {
+                                return tooltipItem.dataset.label;
+                            },	
+                            label: function(tooltipItem) {
+                                const data = tooltipItem.dataset.data;
+                                const currentValue = data[tooltipItem.dataIndex];
+                                if (yMax == null) {
+                                    const total = data.reduce((acc, val) => acc + val, 0);
+                                    const percentage = ((currentValue / total) * 100).toFixed(2);
+                                    return `${currentValue.toFixed(2)} (${percentage}%)`.replace(/[.,]00/, "");
+                                }
+                                else {
+                                    const total = yMax;
+                                    const percentage = ((currentValue / total) * 100).toFixed(2);
+                                    return `${currentValue.toFixed(2)} (${percentage}%)`.replace(/[.,]00/, "");
+                                }
+
+                            }
+                        }
+                    },
                     legend: {
                         labels: {
                             font: {
@@ -179,64 +259,97 @@
             }
         }
 
+        var device_i = 0;
+        
+        const patterns = [
+            'diagonal',
+            'cross',
+            'dot',
+            'triangle',
+            'diagonal-right-left',
+            'diamond',
+            'plus',
+            'dash',
+            'cross-dash',
+            'dot-dash',
+            'disc',
+            'ring',
+            'line',
+            'line-vertical',
+            'weave',
+            'zigzag',
+            'zigzag-vertical',
+            'square',
+            'box',
+            'triangle-inverted',
+            'diamond-box'
+        ];
+
+        const osColors = {
+            'android': '#3DDC84',
+            'android?': '#97deb7',
+            'ios': '#666666',
+            'ios?': '#999999'
+        };
+
+        function getColorFromKey(key) {
+            var key_index = "";
+            
+            if (key.includes("Static")) {
+                device_i = 0;
+            }
+
+            if (key.includes("android")) {
+                key_index = "android";
+            } else if (key.includes("ios")) {
+                key_index = "ios";
+            }
+
+            if (key.includes("?")) {
+                key_index += "?";
+                if (key.includes("Dynamic")) {
+                    device_i++;
+                }
+            }
+            return osColors[key_index];
+        }
+
+        function getColorForCategories(labels, isAndroid) {
+            var colors = [];
+            for (var i = 0; i < labels.length; i++) {
+                if (labels[i] !== 'Other') {
+                    if (isAndroid) {
+                        colors.push('#3DDC84');
+                    } else {
+                        colors.push('#666666');
+                    }
+                } else {
+                    if (isAndroid) {
+                        colors.push('#97deb7');
+                    } else {
+                        colors.push('#999999');
+                    }
+                }
+            }
+            return colors;
+        }
+
+
+
         {% if 'hardeningTechniques' in statistics %}
         new Chart(document.getElementById('hardeningTechniques'), {
             type: 'bar',
             data: {
                 labels: {{ statistics['hardeningTechniques']['labels'] | tojson }},
                 datasets: [
+                    {% for key, value in statistics['hardeningTechniques']['values'].items() %}
                     {
-                        label: 'Android static',
-                        data: {{ statistics['hardeningTechniques']['values']['androidStatic'] | tojson }},
-                        backgroundColor: '#3DDC84',
-                        hoverBackgroundColor: '#3DDC84',
-                        stack: 'androidStatic'
+                        label: '{{ key.replace("android", "Android ").replace("ios", "iOS ").replace("Dynamic_", "Dynamic ").replace('?', '(uncertain)') }}',
+                        data: {{ value | tojson }},
+                        backgroundColor: {% if "Dynamic" in key %} pattern.draw(patterns[device_i], getColorFromKey('{{ key }}')) {% else %} getColorFromKey('{{ key }}') {% endif %},
+                        stack: '{{ key.replace('?', '')}}'
                     },
-                    {
-                        label: 'Android static (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['androidStatic?'] | tojson }},
-                        backgroundColor: '#97deb7',
-                        hoverBackgroundColor: '#97deb7',
-                        stack: 'androidStatic'
-                    },
-                    {
-                        label: 'Android dynamic',
-                        data: {{ statistics['hardeningTechniques']['values']['androidDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#3DDC84'),
-                        stack: 'androidDynamic'
-                    },
-                    {
-                        label: 'Android dynamic (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['androidDynamic?'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#97deb7'),
-                        stack: 'androidDynamic'
-                    },
-                    {
-                        label: 'iOS static',
-                        data: {{ statistics['hardeningTechniques']['values']['iosStatic'] | tojson }},
-                        backgroundColor: '#666666',
-                        hoverBackgroundColor: '#666666',
-                        stack: 'iosStatic'
-                    },
-                    {
-                        label: 'iOS static (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['iosStatic?'] | tojson }},
-                        backgroundColor: '#999999',
-                        hoverBackgroundColor: '#999999',
-                        stack: 'iosStatic'
-                    },
-                    {
-                        label: 'iOS dynamic',
-                        data: {{ statistics['hardeningTechniques']['values']['iosDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#666666'),
-                        stack: 'iosDynamic'
-                    },
-                    {
-                        label: 'iOS dynamic (uncertain)',
-                        data: {{ statistics['hardeningTechniques']['values']['iosDynamic?'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#999999'),
-                        stack: 'iosDynamic'
-                    }
+                    {% endfor %}
                 ]
             },
             options: getOptions(true)
@@ -339,14 +452,14 @@
                     {
                         label: 'Android',
                         data: {{ statistics['hardeningTechniquesPerCategory']['values']['android'] | tojson }},
-                        backgroundColor: '#3DDC84',
-                        hoverBackgroundColor: '#3DDC84'
+                        backgroundColor: getColorForCategories({{ statistics['hardeningTechniquesPerCategory']['labels'] | tojson }}, true),
+                        // hoverBackgroundColor: '#3DDC84'
                     },
                     {
                         label: 'iOS',
                         data: {{ statistics['hardeningTechniquesPerCategory']['values']['ios'] | tojson }},
-                        backgroundColor: '#666666',
-                        hoverBackgroundColor: '#666666',
+                        backgroundColor: getColorForCategories({{ statistics['hardeningTechniquesPerCategory']['labels'] | tojson }}, false),
+                        // hoverBackgroundColor: '#666666',
                     }
                 ]
             },
@@ -444,31 +557,17 @@
             data: {
                 labels: {{ statistics['hookingFrameworks']['labels'] | tojson }},
                 datasets: [
+                    {% for key, value in statistics['hookingFrameworks']['values'].items() %}
                     {
-                        label: 'Android static',
-                        data: {{ statistics['hookingFrameworks']['values']['androidStatic'] | tojson }},
-                        backgroundColor: '#3DDC84',
-                        hoverBackgroundColor: '#3DDC84'
+                        label: '{{ key.replace("android", "Android ").replace("ios", "iOS ").replace("Dynamic_", "Dynamic ").replace('?', '(uncertain)') }}',
+                        data: {{ value | tojson }},
+                        backgroundColor: {% if "Dynamic" in key %} pattern.draw('diagonal', getColorFromKey('{{ key }}')) {% else %} getColorFromKey('{{ key }}') {% endif %},
+                        stack: '{{ key.replace('?', '')}}'
                     },
-                    {
-                        label: 'Android dynamic',
-                        data: {{ statistics['hookingFrameworks']['values']['androidDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#3DDC84')
-                    },
-                    {
-                        label: 'iOS static',
-                        data: {{ statistics['hookingFrameworks']['values']['iosStatic'] | tojson }},
-                        backgroundColor: '#666666',
-                        hoverBackgroundColor: '#666666',
-                    },
-                    {
-                        label: 'iOS dynamic',
-                        data: {{ statistics['hookingFrameworks']['values']['iosDynamic'] | tojson }},
-                        backgroundColor: pattern.draw('diagonal', '#666666')
-                    }
+                    {% endfor %}
                 ]
             },
-            options: getOptions(false, null)
+            options: getOptions(false)
         });
         {% endif %}
 
@@ -562,7 +661,7 @@
                     }
                 ]
             },
-            options: getOptions(false, null)
+            options: getOptions(false)
         });
         {% endif %}
 
@@ -596,9 +695,29 @@
                     }
                 ]
             },
-            options: getOptions(false, null)
+            options: getOptions(false)
         });
         {% endif %}
+        {% if 'packerPerCategory' in statistics %}
+        new Chart(document.getElementById('packerPerCategory'), {
+            type: 'bar',
+            data: {
+                labels: {{ statistics['packerPerCategory']['labels'] | tojson }},
+                datasets: [
+                    {% for packer in statistics['packerPerCategory']['values'].keys() %}
+                        {% if packer != 'None' %}
+                    {
+                        label: '{{ packer }}',
+                        data: {{ statistics['packerPerCategory']['values'][packer] | tojson }},
+                    },
+                        {% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: getOptions(true, 20, true)
+        });
+        {% endif %}
+
     </script>
 </body>
 </html>
