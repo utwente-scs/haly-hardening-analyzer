@@ -39,10 +39,17 @@ cd radare2 ; sys/install.sh
 If you want to make changes to the frida typescript code, you will also need [Node.js and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
 
 ### Install dependencies
-Note: we encountered some issues when running `tcpdump` within a virtual environment, so we recommend not using a venv, if possible.
+To install all dependencies run
 ```bash
 pip install -r requirements.txt
 ```
+
+or using `poetry`
+```bash
+poetry install
+```
+Note: we encountered some issues when running `tcpdump` within a virtual environment, so we recommend not using a venv, if possible.
+
 
 If you want to make changes to the Frida TypeScript code, you will also need to install the npm dependencies:
 ```bash
