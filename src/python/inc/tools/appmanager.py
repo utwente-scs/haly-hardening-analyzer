@@ -54,10 +54,11 @@ def install_app(app: App, wait_to_finish: bool = True) -> bool:
     if Context().is_ios():
         # Check if the app is already downloaded
         ipa = app.get_main_binary_path()
+        udid = Context().get_ios_device_udid() # added to distinguish between multiple devices TODO
         if exists(ipa):
             # Install app via ipa
             while True:
-                (success, result, _) = run_system_command(f"tidevice install {ipa}")
+                (success, result, _) = run_system_command(f"tidevice --udid {udid} install {ipa}")
                 if not success and (
                     "ConnectionRefusedError" in result or "unable to connect" in result
                 ):
@@ -90,9 +91,10 @@ def uninstall_app(app: App) -> bool:
     :return: whether the app was uninstalled
     """
     if Context().is_ios():
+        udid = Context().get_ios_device_udid() # added to distinguish between multiple devices TODO
         while True:
             (success, result, _) = run_system_command(
-                f"tidevice uninstall {app.package_id}"
+                f"tidevice --udid {udid} uninstall {app.package_id}"
             )
             if not success and "ConnectionRefusedError" in result:
                 logger.error("Could not connect to iPhone. Is it connected?")

@@ -17,6 +17,11 @@ class Context:
 
     _device_info = None
 
+    def get_ios_device_udid(self) -> str:
+        """
+        Get the udid for the iOS device that is used for the analysis.
+        """
+        return Config().ios_device_udid
     # Device info
     def set_device_info(self, device_info: dict) -> None:
         """
