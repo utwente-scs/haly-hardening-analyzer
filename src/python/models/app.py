@@ -11,7 +11,7 @@ class App:
         :param package_id: package id of the app
         :param os: OS of the app ('android' / 'ios')
         """
-        self.package_id = package_id
+        self.package_id = str(package_id)
         self.os = os
         self.device = device
 
