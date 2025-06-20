@@ -142,3 +142,5 @@ Implementation of attestation using the SafetyNet API.
 ### iOS
 - `DCAppAttestService.attestKey`
 Implementation of attestation using the Apple App Attest Service.
+- `NSBundle pathForResource:ofType` -- arg1: `mobileprovision`
+Can be used to check if the signature of the app was modified.
