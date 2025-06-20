@@ -70,7 +70,7 @@ def cli(
     if not exists(config):
         logging.error("Provided config file could not be found")
         exit(1)
-    print(f"Loading config from {config}")
+    logging.debug(f"Loading config from {config}")
     with open(config, "r") as config_file:
         c = yaml.load(config_file, Loader=yaml.Loader)
         Config().from_dict(c, dev)
