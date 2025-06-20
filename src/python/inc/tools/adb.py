@@ -8,7 +8,7 @@ from inc.tools.telnet import TelnetReverseShell
 logger = logging.getLogger("hardeninganalyzer")
 
 def is_device_connected(dev_serial: str, disconnect: bool = False) -> bool:
-    print(f"Waiting for {dev_serial} to {'disconnect' if disconnect else 'start'}...")
+    logging.debug(f"Waiting for {dev_serial} to {'disconnect' if disconnect else 'start'}...")
     started = adb(f"wait-for-{'disconnect' if disconnect else 'device'}", dev_serial)
     if started is False and not disconnect:
         logger.error(f"Could not connect to Android device {dev_serial}. Is it connected?")
@@ -116,7 +116,7 @@ def start_emulator(device: dict)->subprocess.Popen:
         cmd += ["-net-tap", network_adapter]
     if network_adapter is not None and not is_tap:
         cmd += ["-net", network_adapter]
-    print(f"Starting emulator with command: {cmd}")
+    logging.debug(f"Starting emulator with command: {cmd}")
     # Start the emulator
     return subprocess.Popen(cmd, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,)

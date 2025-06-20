@@ -23,6 +23,14 @@ class TamperDetector(Detector):
                     binary.path, "DCAppAttestService::attestKey", result
                 )
             )
+        for result in binary.find_objc_call("resourceURL"):
+            self.static_results.append(
+                NativeFunctionStaticMessage(
+                    binary.path, 'NSURL::resourceURL', result, confident=False
+                )
+            )
+        
+        
 
     def static_analyze_plaintext(self) -> None:
         if Context().is_android():

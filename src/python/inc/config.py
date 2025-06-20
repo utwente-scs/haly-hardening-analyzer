@@ -11,7 +11,7 @@ logger = logging.getLogger("hardeninganalyzer")
 @cache  # Singleton
 class Config(object):
     logging = "info"
-    work_dir = join(dirname(__file__), "../../../", "workdir")
+    work_dir = None
     dump_timeout = 30
     radare_timeout = 30
     radare_memory_limit = None
@@ -27,6 +27,8 @@ class Config(object):
     device = None
     dev = None
     dev_name = None
+
+    ios_device_udid = None
 
     network_adapter = None
     ips = {"android": None, "ios": None}

@@ -30,7 +30,6 @@ for id in ids['apps']:
         app['android_icon'] = app_info['icon']
         app['android_publisher'] = app_info['developer']
         app['android_category'] = app_info['genre']
-        #print(app)
         final_data['apps'].append(app)
 
         with open(out_file, "w") as f:

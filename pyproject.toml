@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "haly-hardening-analyzer"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyyaml = "^6.0.1"
+click = "^8.1.7"
+cython = "^3.0.10"
+setuptools = "69.1.0"
+wheel = "^0.43.0"
+cmake = "^3.29.3"
+
+#[build-system]
+#requires = ["poetry-core"]
+#build-backend = "poetry.core.masonry.api"
+cachetools = "^5.3.3"
+google-re2 = "^1.1.20240501"
+pandasql = "^0.7.3"
+pandas = "2.0.1"
+tqdm = "^4.66.4"
+scp = "^0.15.0"
+androguard = "4.1.2"
+intervaltree = "^3.1.0"
+r2pipe = "^1.9.2"
+xmltodict = "^0.13.0"
+tidevice = "^0.12.10"
+flask = "^3.0.3"
+pyjson5 = "^1.6.6"
+pyshark = "^0.6"
+psutil = "^5.9.8"
+numpy = "<2"
+frida = "16.0.8"
+frida-tools = "12.0.4"
+scipy = "^1.15.3"
+flask-caching = "^2.3.1"
+
+[build-system]
+requires = ["setuptools", "wheel", "Cython>=0.20", "cmake"]
+build-backend = "setuptools.build_meta:__legacy__"

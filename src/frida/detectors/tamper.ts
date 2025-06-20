@@ -41,3 +41,12 @@ addJavaPreHook('com.google.android.gms.safetynet.SafetyNetClient::attest', ['str
 addObjCPreHook('-[DCAppAttestService attestKey:clientDataHash:completionHandler:]', 0, (data) => {
     logObjCFunction(data)
 });
+
+// Check if app accesses bundle's subdirectory that contains the resource files
+addObjCPreHook('-[NSURL resourceURL]', 0, (data) => {
+    logObjCFunction(data)
+});
+// check if app accesses file exists method (positive if in combination with access to bundle's subdirectory)
+addObjCPreHook('-[FileManager fileExists:atPath:isDirectory:]', 2, (data) => {
+    logObjCFunction(data)
+});
