@@ -387,6 +387,10 @@ def _get_apps_results() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]
                 )
                 if file == "app_counts":
                     data = dict(zip(data["key"], data["value"]))
+                if file == "app_results":
+                    data["confident"] = data["confident"].apply(
+                        lambda x: True if x == "True" else False
+                    ).fillna(False)
                 if file == "app_apkid_results":
                     data["packer"] = data["packer"].apply(
                         lambda x: json.loads(x.replace("'", '"')) if x != {} else {}
@@ -621,7 +625,7 @@ def _should_ignore_detection(detection_result: dict) -> bool:
         if "bash" in pattern and not "bin/bash" in lower_line_text:
             return True
 
-        if "\/sys\/kernel\/debug" in pattern:
+        if r"\/sys\/kernel\/debug" in pattern:
             return True
 
         if (
