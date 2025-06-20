@@ -76,7 +76,7 @@ class FridaApplication:
                 if device.type != "usb":
                     continue
                 if device.id != Config().device["serial"]:
-                    print(device.id, Config().device["serial"])
+                    logging.debug(device.id, Config().device["serial"])
                     continue
                 if device.query_system_parameters()["os"]["id"] == Context().get_os():
                     self._device = device

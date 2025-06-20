@@ -47,7 +47,7 @@ def analyze(app: App) -> None:
     emu_proc = None
 
     if Config().device is not None and Config().device["type"] == "emulator" and Config().device["avd"] is not None:
-        print("Starting emulator")
+        logging.debug("Starting emulator")
         emu_proc = start_emulator(Config().device)
         time.sleep(10)
         # Check if device is online
