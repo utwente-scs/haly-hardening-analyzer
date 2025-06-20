@@ -7,6 +7,7 @@ import paramiko
 import scp
 import uuid
 import logging
+from sys import platform
 
 logger = logging.getLogger("hardeninganalyzer")
 
@@ -79,7 +80,10 @@ class open_with_timeout_and_memlimit(OpenBase):
 
         cmd = ""
         if mem_limit_gb is not None:
-            cmd = f"ulimit -Sv {int(mem_limit_gb * 1024 * 1024)}; "
+            if platform == "darwin":
+                cmd = f"ulimit -S -n {int(mem_limit_gb * 1024 * 1024)}; "
+            else:
+                cmd = f"ulimit -Sv {int(mem_limit_gb * 1024 * 1024)}; "
 
         if radare2home is not None:
             if self.local and not os.path.isdir(radare2home):
