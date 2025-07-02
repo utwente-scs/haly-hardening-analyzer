@@ -1,12 +1,12 @@
 # Haly: Hardening Analyzer
-Haly is a framework that can automatically detect the usage of hardening techniques (RASP) in Android and iOS apps using static and dynamic analysis. It was developed as part of a master thesis at the [University of Twente](https://www.utwente.nl/) and a research paper at IEEE EuroS&P 2025.
+Haly is a framework that can automatically detect the usage of hardening techniques (RASP) in Android and iOS apps using static and dynamic analysis. It was developed as part of a master thesis at the [University of Twente](https://www.utwente.nl/) and a research paper at IEEE EuroS&P 2025 (Preprint available here: https://download.vusec.net/papers/haly_eurosp25.pdf).
 
 If you use this work in whole or in part for academic purposes please cite:
-```
-Steinböck, M., Troost, J., van Beijnum, W., Seredynski, J., Bos, H., Lindorfer, M., & Continella, A. SoK: Hardening Techniques in the Mobile Ecosystem—Are We There Yet?, Proceedings of the IEEE European Symposium on Security and Privacy (EuroS&P), 2025.
 
-Beijnum, A. C. W. Haly: Automated evaluation of hardening techniques in Android and iOS apps. MS thesis. University of Twente, 2023.
-```
+>Steinböck, M., Troost, J., van Beijnum, W., Seredynski, J., Bos, H., Lindorfer, M., & Continella, A. SoK: Hardening Techniques in the Mobile Ecosystem—Are We There Yet?, Proceedings of the IEEE European Symposium on Security and Privacy (EuroS&P), 2025.
+
+>Beijnum, A. C. W. Haly: Automated evaluation of hardening techniques in Android and iOS apps. MS thesis. University of Twente, 2023.
+
 
 ## Implemented checks
 An overview on the detailed checks we implemented to detect hardening techniques can be found in [CHECKS.md](CHECKS.md).
